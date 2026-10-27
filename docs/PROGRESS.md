@@ -25,3 +25,23 @@ Pueden existir diferencias de detalle con las versiones originales (p. ej. recor
 `python -m pytest -q` → 20 passed. `npm run typecheck` → sin errores. Docker, Redis, Postgres, FreeToGame y LLM reales: **no probados**.
 ### Siguiente
 P1-01 → P1-02 → P1-03 → P1-06 (ver ROADMAP). Preguntas que conviene resolver pronto: Q-01 (auth) y Q-05 (criterio RNF-1).
+
+## 2026-10-27 · Sesión 3 (16:40) — autor: Claude Sonnet 5.5 — rama `p1-01-verify-stack`
+Objetivo: P1-01 (arranque real). El sandbox no tiene daemon Docker ni acceso a freetogame.com, así que se verificó el stack equivalente en local:
+Postgres 16 + Redis 7 reales, `backend/scripts/fake_freetogame.py` como upstream, backend con uvicorn.
+### Verificado ✅
+- Migraciones 001+002 → 7 tablas. `/health` → `{"status":"ok","redis":true,"db":true}`. CORS preflight desde :3000 OK.
+- Caché: 2 peticiones iguales = 1 llamada upstream; TTL fresca 43200 s, `:stale` 2592000 s.
+- Fallback: con upstream caído y clave fresca expirada → 200 con copia stale; sin copia → 503. Filtros inválidos → 422. `/api/filters` OK.
+- `catalog_sync` ×2 → 60 filas (idempotente). Interacciones → 201; `/api/library` OK.
+- `run_daily_pipeline` ×2 → 1 fila (idempotente), 5 ids; `/api/recommendations/today`: `fallback_popular` antes del batch, `ml` después; juegos jugados/descartados excluidos (RF-3.3).
+- `/api/chat` sin clave → 503 claro.
+### Bugs encontrados y corregidos
+1. `GET /api/games/{id}` con id inexistente devolvía 503: el cliente trataba el HTTP 404 de FreeToGame como caída. Ahora 404 = "no encontrado" (no usa stale, no cachea). Test nuevo.
+2. `POST /api/interactions` daba 500 si el juego no estaba en `games` o el usuario no existía. Ahora 404 y creación lazy del usuario dev (P1-05 parcial).
+### No verificado
+`docker compose up` (sin daemon), API real de FreeToGame (P1-03), frontend en navegador (P1-06), OpenAI (P2-01), scheduler cron real (P3-03).
+### Tests
+`python -m pytest -q` → 21 passed.
+### Siguiente
+En máquina con Docker + internet: `docker compose up`, `make sync`/equivalente, abrir http://localhost:3000 (P1-01, P1-03, P1-06). Luego Q-01 → P1-04.

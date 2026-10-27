@@ -38,6 +38,9 @@ class FreeToGameClient:
             return fresh
         try:
             resp = await self._http.get(path, params=params)
+            if resp.status_code == 404:
+                # Unknown resource (e.g. bad game id) is NOT an outage: don't use stale, don't cache it.
+                return {"status": 0, "status_message": "not found"}
             resp.raise_for_status()
             data = resp.json()
         except (httpx.HTTPError, ValueError):

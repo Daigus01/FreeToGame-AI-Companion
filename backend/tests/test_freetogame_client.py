@@ -53,3 +53,10 @@ def test_raises_when_down_and_no_stale():
 def test_unknown_game_returns_none():
     c = make(lambda r: httpx.Response(200, json={"status": 0, "status_message": "no game"}))
     assert asyncio.run(c.get_game(999999)) is None
+
+
+def test_http_404_is_not_found_not_outage():
+    cache = MemCache()
+    c = make(lambda r: httpx.Response(404, json={"status": 0, "status_message": "Game not found"}), cache)
+    assert asyncio.run(c.get_game(999999)) is None
+    assert cache.fresh == {}  # negative results are not cached

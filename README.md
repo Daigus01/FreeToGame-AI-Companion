@@ -18,3 +18,6 @@ make sync                   # (otra terminal) rellena `games`
 make test                   # tests backend sin servicios externos
 ```
 Sin API key el catálogo funciona; `/api/chat` responde 503. La auth es un stub de desarrollo (`X-User-Id`).
+
+## Desarrollo sin acceso a FreeToGame
+`python backend/scripts/fake_freetogame.py 9000` y `FREETOGAME_BASE_URL=http://localhost:9000/api` en `.env`. Ver `docs/HANDOFF.md` §8.

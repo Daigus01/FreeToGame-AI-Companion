@@ -2,8 +2,8 @@
 
 ## 1. Resumen de estado (2026-10-27)
 Esqueleto funcional de las 3 fases del SRS. Backend: 20 tests en verde (sin servicios externos). Frontend: `tsc` limpio.
-**Nada se ha ejecutado contra Postgres, Redis, la API real de FreeToGame ni un LLM real.** Todo lo marcado 🟡 en ROADMAP.md es código escrito pero no verificado en vivo.
-Siguiente paso recomendado: **P1-01** (docker compose up) → P1-02 → P1-03 → P1-06, y después Fase 2.
+Verificado con Postgres 16 y Redis 7 reales (sesión 3): migraciones, `/health`, caché 12 h, copia stale, `catalog_sync`, interacciones y pipeline diario. **Sigue sin verificarse:** `docker compose up`, la API real de FreeToGame (el sandbox no llega al host) y un LLM real. Lo marcado 🟡 en ROADMAP.md está parcialmente verificado; lee su nota.
+Siguiente paso recomendado: en una máquina con Docker y salida a internet: `docker compose up` (cierra P1-01) + P1-03 (API real) → P1-06 (frontend en navegador) → P1-04 (auth, tras Q-01) → Fase 2.
 
 ## 2. Cómo retomar (prompt sugerido para la IA auxiliar)
 > Lee `CLAUDE.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md` y la última entrada de `docs/PROGRESS.md`. Ejecuta `make test` y `make typecheck` para confirmar el estado base. Toma la primera tarea ⬜/🟡 del ROADMAP de la fase actual, impleméntala con tests, y al terminar actualiza ROADMAP (estado), PROGRESS (entrada nueva), TRACEABILITY si aplica y los `STATUS:`/`TODO(ID)` del código. No sobrescribas archivos existentes sin leerlos. Si hay una decisión de producto abierta (sección 5), pregunta antes de decidir.
@@ -30,6 +30,7 @@ backend/app/
   ml/scheduler.py      APScheduler cron 00:00 UTC
   db/models.py, db/session.py   SQLAlchemy async
 backend/migrations/    001_init.sql (SRS §6 + índices), 002_preference_profiles.sql (extensión)
+backend/scripts/       fake_freetogame.py (API falsa para desarrollo offline; ver §8)
 backend/tests/         test_tools (aloja FakeClient), test_orchestrator, test_ranking, test_freetogame_client, test_api
 frontend/app/          layout.tsx, page.tsx
 frontend/components/   GameCard, Filters, GameModal, Top5Widget, ChatWidget
@@ -79,3 +80,6 @@ Espejo TypeScript: `frontend/lib/types.ts` (`ChatEvent`). Si cambias uno, cambia
 - Tests no necesitan Postgres/Redis: usan `FakeClient`, `httpx.MockTransport` y overrides de FastAPI. `db/session.py` crea el engine al importar pero no conecta.
 - `db/session.py` y `services/catalog_sync.py` requieren Postgres vivo para ejecutarse de verdad.
 - El historial pasado a proveedor puede crecer: hoy se limita a 30 mensajes (`HISTORY_LIMIT`); recorte por tokens pendiente (P2-05).
+- **API falsa para desarrollo offline:** `python backend/scripts/fake_freetogame.py 9000` y `FREETOGAME_BASE_URL=http://localhost:9000/api`. Endpoints extra: `GET /__hits` (cuenta llamadas), `POST /__down` / `POST /__up` (simula caída). Datos sintéticos (60 juegos); no sustituye P1-03.
+- **Arranque local sin Docker** (así se verificó en la sesión 3): Postgres 16 + Redis 7 locales, aplicar `backend/migrations/*.sql` en orden, `ENABLE_SCHEDULER=false`, `uvicorn app.main:app`. Cuidado: `pkill -f uvicorn` desde un shell cuyo comando contenga ese texto lo mata a sí mismo.
+- El cliente trata HTTP 404 de FreeToGame como "no encontrado" (no como caída, no cachea). Se asumió así porque la API real no se pudo consultar; confirmar en P1-03.
