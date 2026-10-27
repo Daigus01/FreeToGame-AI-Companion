@@ -2,8 +2,8 @@
 
 ## 1. Resumen de estado (2026-10-27)
 Esqueleto funcional de las 3 fases del SRS. Backend: 20 tests en verde (sin servicios externos). Frontend: `tsc` limpio.
-Verificado con Postgres 16 y Redis 7 reales (sesión 3): migraciones, `/health`, caché 12 h, copia stale, `catalog_sync`, interacciones y pipeline diario. **Sigue sin verificarse:** `docker compose up`, la API real de FreeToGame (el sandbox no llega al host) y un LLM real. Lo marcado 🟡 en ROADMAP.md está parcialmente verificado; lee su nota.
-Siguiente paso recomendado: en una máquina con Docker y salida a internet: `docker compose up` (cierra P1-01) + P1-03 (API real) → P1-06 (frontend en navegador) → P1-04 (auth, tras Q-01) → Fase 2.
+Verificado con Postgres 16 y Redis 7 reales (sesión 3): migraciones, `/health`, caché 12 h, copia stale, `catalog_sync`, interacciones y pipeline diario. `docker compose up` y `catalog_sync` con la API real de FreeToGame (419 juegos) fueron ejecutados por el dueño en Windows (sesión 4). **Sigue sin verificarse:** detalle/404 de la API real, el frontend en navegador y un LLM real. Lo marcado 🟡 en ROADMAP.md está parcialmente verificado; lee su nota.
+Siguiente paso recomendado: P1-06 (abrir el frontend en el navegador y revisar catálogo/filtros/modal) + resto de P1-03 → P1-04 (auth, tras Q-01) → programar `catalog_sync` (P1-02) → Fase 2.
 
 ## 2. Cómo retomar (prompt sugerido para la IA auxiliar)
 > Lee `CLAUDE.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md` y la última entrada de `docs/PROGRESS.md`. Ejecuta `make test` y `make typecheck` para confirmar el estado base. Toma la primera tarea ⬜/🟡 del ROADMAP de la fase actual, impleméntala con tests, y al terminar actualiza ROADMAP (estado), PROGRESS (entrada nueva), TRACEABILITY si aplica y los `STATUS:`/`TODO(ID)` del código. No sobrescribas archivos existentes sin leerlos. Si hay una decisión de producto abierta (sección 5), pregunta antes de decidir.

@@ -2,7 +2,7 @@
 
 | Req. | Dónde | Estado |
 |---|---|---|
-| RF-1.1 catálogo grid | `routes/games.py`, `frontend/app/page.tsx`, `GameCard` | 🟡 sin E2E (P1-01/03/06) |
+| RF-1.1 catálogo grid | `routes/games.py`, `frontend/app/page.tsx`, `GameCard` | 🟡 backend con API real (419 juegos); UI sin revisar en navegador (P1-06) |
 | RF-1.2 filtros | `schemas.py` (valores), `routes/games.py`, `Filters.tsx`, `lib/constants.ts` | ✅ 422 en valores inválidos (test) |
 | RF-1.3 detalle | `GET /api/games/{id}`, `GameModal.tsx` | 🟡 (P1-08) |
 | RF-1.4 biblioteca | `routes/interactions.py` (+`GET /api/library`) | 🟡 semántica pendiente (P1-05) |

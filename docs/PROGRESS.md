@@ -45,3 +45,13 @@ Postgres 16 + Redis 7 reales, `backend/scripts/fake_freetogame.py` como upstream
 `python -m pytest -q` → 21 passed.
 ### Siguiente
 En máquina con Docker + internet: `docker compose up`, `make sync`/equivalente, abrir http://localhost:3000 (P1-01, P1-03, P1-06). Luego Q-01 → P1-04.
+
+## 2026-10-27 · Sesión 4 (16:33–16:40 hora CDMX) — verificación por el dueño + revisión de merge
+Resultados reportados por el dueño (Windows, Docker Desktop), ejecutados sobre `main`:
+- `docker compose up` → todo arrancó bien.
+- `catalog_sync` con la API real → **419 juegos** en `games` (primer intento falló por ejecutar con el Python de Windows, sin dependencias: se debe usar `docker compose exec backend python -m app.services.catalog_sync`).
+- `pytest` en el contenedor → 20 passed (es `main`; la rama `p1-01-verify-stack` tiene 21 con el test del 404).
+Revisión de la rama `p1-01-verify-stack` para merge: ver sección "Revisión de merge" más abajo.
+### Revisión de merge (rama p1-01-verify-stack → main)
+Diff: 9 archivos, +117/-16; código de producción solo en `interactions.py` (+404 y ensure_user) y `services/freetogame.py` (HTTP 404 = no encontrado). 21 tests y `tsc` en verde, sin secretos ni `.env` versionados, `main` no avanzó (merge sin conflictos).
+Riesgos conocidos y aceptados: (1) el manejo del 404 asume que FreeToGame responde HTTP 404 para ids inexistentes; si respondiera 200 con `{"status":0}` también funciona (rama ya cubierta por el test original); un 404 en `/games` (lista) devolvería lista vacía en vez de error. (2) la auth sigue siendo el stub `X-User-Id` (no desplegar en público, P1-04).
