@@ -1,52 +1,79 @@
-// Typed client for the backend. STATUS: skeleton, untested (P1-06).
-// TODO(P1-04): replace DEV_USER_ID header with real auth (cookie/JWT).
-import type { ChatEvent, DailyRecommendations, Game, GameDetail, InteractionType, Platform, SortBy } from "./types";
+// Typed client for the backend. STATUS: catalog/filters/modal verified in browser; auth (D-11) pending real-provider check (P1-11).
+// Auth: the browser sends the HttpOnly `ftg_session` cookie (credentials: "include"). NEXT_PUBLIC_DEV_USER_ID is an
+// OPTIONAL local-dev fallback that only works if the backend runs with ALLOW_DEV_AUTH=true.
+import type { AuthProvider, AuthProviders, ChatEvent, DailyRecommendations, Game, GameDetail, InteractionType, Me, Platform, SortBy } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "00000000-0000-0000-0000-000000000001";
+const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "";
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
 
 function headers(): HeadersInit {
-  return { "Content-Type": "application/json", "X-User-Id": DEV_USER_ID };
+  return { "Content-Type": "application/json", ...(DEV_USER_ID ? { "X-User-Id": DEV_USER_ID } : {}) };
+}
+
+function req(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(`${API_URL}${path}`, { ...init, headers: { ...headers(), ...(init.headers ?? {}) }, credentials: "include" });
 }
 
 async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new ApiError(res.status, `API ${res.status}: ${await res.text()}`);
   return res.json() as Promise<T>;
 }
 
+// ---- auth (D-11) ----
+export const loginUrl = (p: AuthProvider) => `${API_URL}/api/auth/${p}/login`;
+
+export async function fetchProviders(): Promise<AuthProviders> {
+  return json(await req("/api/auth/providers"));
+}
+
+/** null when not logged in (401); throws on other failures. */
+export async function fetchMe(): Promise<Me | null> {
+  const res = await req("/api/auth/me");
+  if (res.status === 401) return null;
+  return json(res);
+}
+
+export async function logout(): Promise<void> {
+  await req("/api/auth/logout", { method: "POST" });
+}
+
+// ---- catalog ----
 export async function fetchGames(p: { category?: string; platform?: Platform; sort_by?: SortBy }): Promise<Game[]> {
   const q = new URLSearchParams();
   if (p.category) q.set("category", p.category);
   if (p.platform) q.set("platform", p.platform);
   if (p.sort_by) q.set("sort_by", p.sort_by);
-  return json(await fetch(`${API_URL}/api/games?${q}`, { headers: headers() }));
+  return json(await req(`/api/games?${q}`));
 }
 
 export async function fetchGame(id: number): Promise<GameDetail> {
-  return json(await fetch(`${API_URL}/api/games/${id}`, { headers: headers() }));
+  return json(await req(`/api/games/${id}`));
 }
 
 export async function fetchDailyTop5(): Promise<DailyRecommendations> {
-  return json(await fetch(`${API_URL}/api/recommendations/today`, { headers: headers() }));
+  return json(await req("/api/recommendations/today"));
 }
 
-export async function track(game_id: number, interaction_type: InteractionType): Promise<void> {
-  // fire-and-forget; failures must never break the UI
-  fetch(`${API_URL}/api/interactions`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({ game_id, interaction_type }),
-  }).catch(() => {});
+/** Records an interaction. Resolves true if stored; false if not logged in (401) or on any failure. Never throws. */
+export async function track(game_id: number, interaction_type: InteractionType): Promise<boolean> {
+  try {
+    const res = await req("/api/interactions", { method: "POST", body: JSON.stringify({ game_id, interaction_type }) });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** Streams POST /api/chat (SSE over fetch, since EventSource cannot POST). */
 export async function* streamChat(message: string, sessionId?: string): AsyncGenerator<ChatEvent> {
-  const res = await fetch(`${API_URL}/api/chat`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({ message, session_id: sessionId }),
-  });
-  if (!res.ok || !res.body) throw new Error(`chat failed: ${res.status}`);
+  const res = await req("/api/chat", { method: "POST", body: JSON.stringify({ message, session_id: sessionId }) });
+  if (!res.ok || !res.body) throw new ApiError(res.status, `chat failed: ${res.status}`);
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";

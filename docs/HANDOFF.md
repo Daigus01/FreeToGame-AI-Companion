@@ -3,7 +3,7 @@
 ## 1. Resumen de estado (2026-10-27)
 Esqueleto funcional de las 3 fases del SRS. Backend: 20 tests en verde (sin servicios externos). Frontend: `tsc` limpio.
 Verificado con Postgres 16 y Redis 7 reales (sesión 3): migraciones, `/health`, caché 12 h, copia stale, `catalog_sync`, interacciones y pipeline diario. `docker compose up` y `catalog_sync` con la API real de FreeToGame (419 juegos) fueron ejecutados por el dueño en Windows (sesión 4). El 404 real y catálogo/filtros/modal en navegador también fueron verificados por el dueño. **Sigue sin verificarse:** Top 5 y chat en la UI, y un LLM real. Lo marcado 🟡 en ROADMAP.md está parcialmente verificado; lee su nota.
-Siguiente paso recomendado: resolver Q-01 → P1-04 (auth) → resto de P1-06 (Top 5 y chat en UI) → programar `catalog_sync` (P1-02) → Fase 2 (necesita `OPENAI_API_KEY`). Catálogo, filtros, modal y 404 real ya verificados por el dueño.
+Siguiente paso recomendado: P1-11 (crear credenciales y probar el login real, ver `docs/OAUTH_SETUP.md`) → resto de P1-06 (Top 5 y chat en UI) → programar `catalog_sync` (P1-02) → Fase 2 (necesita `OPENAI_API_KEY`). Catálogo, filtros, modal y 404 real ya verificados por el dueño.
 
 ## 2. Cómo retomar (prompt sugerido para la IA auxiliar)
 > Lee `CLAUDE.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md` y la última entrada de `docs/PROGRESS.md`. Ejecuta `make test` y `make typecheck` para confirmar el estado base. Toma la primera tarea ⬜/🟡 del ROADMAP de la fase actual, impleméntala con tests, y al terminar actualiza ROADMAP (estado), PROGRESS (entrada nueva), TRACEABILITY si aplica y los `STATUS:`/`TODO(ID)` del código. No sobrescribas archivos existentes sin leerlos. Si hay una decisión de producto abierta (sección 5), pregunta antes de decidir.
@@ -19,7 +19,9 @@ backend/app/
   services/catalog_sync.py  API → tabla games (python -m app.services.catalog_sync)
   services/chat_store.py    historial en Postgres (convención D-06)
   services/recs.py / users.py  glue ranking / crear usuario dev
-  api/deps.py          get_ftg, get_current_user_id (STUB dev), get_llm_provider
+  api/deps.py          get_ftg, get_current_user_id (cookie de sesión; header solo con ALLOW_DEV_AUTH), get_llm_provider
+  auth/session.py, auth/providers.py   cookies firmadas (sesión + state) y flujo OAuth Google/Discord (D-11)
+  api/routes/auth.py   /api/auth/{providers,google|discord/login,…/callback,me,logout}
   api/routes/          health, games(+filters), interactions(+library), chat(SSE), recommendations
   llm/tools.py         schemas SRS §5 + execute_tool (nunca lanza; devuelve {"error"})
   llm/orchestrator.py  run_chat(): bucle LLM↔tools (máx 4 rondas), eventos token/tool_call/games/error/done
@@ -48,9 +50,10 @@ frontend/lib/          api.ts (cliente + streamChat SSE), types.ts, constants.ts
 - **D-08** Scheduler en proceso (APScheduler) para 1 réplica; con varias, mover a worker dedicado o Celery beat. `ENABLE_SCHEDULER=false` lo apaga.
 - **D-09** Las herramientas devuelven al LLM una carga *reducida* (id, título, género…, descripción 140 car., máx. 12 juegos) y a la UI los datos completos para tarjetas, para ahorrar tokens/latencia (RNF-1).
 - **D-10** Un fallo del proveedor LLM produce un evento SSE `error` genérico (sin detalles internos) y no persiste el turno.
+- **D-11** (resuelve Q-01) Auth = OAuth 2.0 *authorization code* con **Google y Discord únicamente**, implementado con `httpx` (sin librería OAuth). Sesión = cookie `ftg_session` firmada (`itsdangerous`), `HttpOnly`, `SameSite=Lax`, 30 días; el *state* anti-CSRF va en otra cookie de 10 min. Solo se aceptan correos **verificados**; el mismo correo en dos proveedores = mismo usuario (tabla `user_identities`, migración 003). El header `X-User-Id` solo vale con `ALLOW_DEV_AUTH=true`. Los tokens del proveedor no se guardan. Guía: `docs/OAUTH_SETUP.md`. Pendiente: limitar peticiones (P4-02) y revocar sesiones del lado servidor si hiciera falta.
 
 ## 5. Preguntas abiertas (necesitan al dueño del producto)
-- **Q-01 Auth:** el SRS lista "Auth & User Service" sin requisitos. ¿Email magic link, OAuth, usuario/contraseña? Hoy: stub `X-User-Id` (solo desarrollo). Bloquea P1-04.
+- ~~**Q-01 Auth**~~ → **RESUELTA** (2026-10-27): OAuth con Google y Discord, ver D-11.
 - **Q-02 "Subgénero":** la API no lo da. ¿Basta `genre`, o se enriquecen con etiquetas/categorías (`?category=` por etiqueta)? Afecta P3-07.
 - **Q-03 Proveedor/modelo LLM y presupuesto:** el SRS cita GPT-4o-mini / "Claude 3.5 Sonnet" (ya antiguos). Los modelos son configurables por env; falta elegir default y límite de gasto por usuario.
 - **Q-04 Semántica de biblioteca:** ¿"guardado/jugado/no me interesa" son estados excluyentes (último gana, se puede deshacer) o eventos acumulativos? Hoy: solo se añaden filas.

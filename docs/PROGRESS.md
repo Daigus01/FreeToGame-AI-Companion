@@ -61,3 +61,22 @@ Confirmación del dueño ya sobre la rama `p1-01-verify-stack` (Docker/Windows):
 Confirmaciones del dueño: `GET /api/games/999999` → **404** con la API real (cierra la duda del manejo del 404); catálogo, filtros y modal de detalle funcionan en el navegador (P1-06 parcial).
 Rama `p1-01-verify-stack` mergeada a `main` (fast-forward, sin conflictos). Estado base de `main`: 21 tests, `tsc` limpio, Docker verificado por el dueño.
 Siguiente: Q-01 (auth) → P1-04; verificar chat/Top 5 en UI (P1-06 resto); programar `catalog_sync` (P1-02); luego Fase 2 (necesita OPENAI_API_KEY).
+
+## 2026-10-27 · Sesión 6 (20:48) — P1-04 OAuth (Google + Discord) — rama `p1-04-oauth`
+Decisión del dueño: Q-01 → OAuth, solo Google y Discord (registrada como D-11).
+### Hecho
+- Backend: `auth/session.py` (cookies firmadas), `auth/providers.py` (flujo authorization-code con httpx), `api/routes/auth.py`, `services/users.py` (`upsert_oauth_user`), `deps.get_current_user_id` por cookie (header solo con `ALLOW_DEV_AUTH=true`), CORS con credenciales, migración `003_auth.sql` (+`users.name/avatar_url`, tabla `user_identities`), nuevas variables de entorno, `itsdangerous` en requirements.
+- Frontend: `AuthButton`, `lib/api.ts` con `credentials: "include"` y `ApiError`, avisos (`?auth_error=`), mensajes 401/503 en chat y modal.
+- Docs: `docs/OAUTH_SETUP.md` (guía de credenciales y migración), HANDOFF (D-11, Q-01 resuelta), ROADMAP (P1-04 🟡, nueva P1-11), TRACEABILITY, README, `.env.example`.
+### Verificación
+- `pytest`: **42 passed** (21 previos + 21 de auth: firma/expiración/forjado de cookies, state CSRF, URLs de autorización, normalización Google/Discord, canje de código con HTTP simulado, rutas login/callback/me/logout, rechazos, dependencia con/sin dev-auth).
+- Postgres real: migración 003 sobre BD existente (idempotente); `upsert_oauth_user`: mismo login → mismo usuario, Discord con el mismo correo verificado → se vincula, nombre/avatar se actualizan, correo normalizado a minúsculas, 3 primeros logins simultáneos → un solo usuario.
+- Servidor real: sin sesión 401 en `/me` y Top 5; header `X-User-Id` rechazado; cookie falsificada 401; con cookie válida `/me`, interacciones, biblioteca y Top 5 OK; state falso → `?auth_error=state`; CORS con credenciales OK.
+- Navegador (Playwright/Chromium): botones Google/Discord sin sesión, aviso de `auth_error` y limpieza de la URL, modal avisa "Inicia sesión…", con sesión se ve el usuario, el Top 5 y "Guardado en tu biblioteca", chat sin clave LLM muestra "no está configurado". Sin errores JS. `tsc` limpio.
+### No verificado
+Login real con Google/Discord (el sandbox no llega a esos hosts y faltan credenciales) → **P1-11**, a cargo del dueño con `docs/OAUTH_SETUP.md`.
+### Notas
+- Cambio de comportamiento: `ALLOW_DEV_AUTH` es `false` por defecto, así que sin OAuth configurado Top 5, chat y biblioteca devuelven 401 (el catálogo sigue público). Para desarrollo sin OAuth: `ALLOW_DEV_AUTH=true` + `NEXT_PUBLIC_DEV_USER_ID=<uuid>`.
+- El nombre del usuario se actualiza con el del último proveedor usado (puede alternar entre Google y Discord).
+- El modal de detalle aún no cierra con ESC (ya listado en P1-08).
+- Despliegue: existente BD → aplicar migración 003 a mano (ver OAUTH_SETUP §4).

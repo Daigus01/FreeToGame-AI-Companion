@@ -15,7 +15,8 @@ Verificado: `make test` (20 tests) y `make typecheck`. **No verificado:** nada c
 | P1-01 | Levantar `docker compose up`; comprobar migraciones y caché Redis reales | ✅ `docker compose up` ejecutado por el dueño en Windows (todo arrancó bien); además verificado con Postgres/Redis reales en el sandbox | `/health` = ok; 2ª petición a `/api/games` no sale a internet; TTL 12 h visible con `redis-cli ttl` |
 | P1-02 | Ejecutar `catalog_sync` y programarlo a diario antes del batch ML (p.ej. 23:30 UTC) | 🟡 `catalog_sync` verificado con la API real: 419 juegos en `games` (Windows/Docker) e idempotente; **falta programarlo a diario** | tabla `games` ≈ catálogo completo; re-ejecución idempotente |
 | P1-03 | Verificar `FreeToGameClient` contra la API real (campos, `sort-by`, categoría, id inexistente, rate limit) | 🟡 verificado con la API real: lista (419 juegos) e id inexistente (HTTP 404 confirmado → `/api/games/999999` da 404). **Falta:** revisar `sort-by`/categorías con datos reales y rate limit | test de contrato opcional (`pytest -m live`) pasa |
-| P1-04 | Auth real (reemplazar stub `X-User-Id`) ❓Q-01 | ❓ | usuario se registra/entra; endpoints protegidos; sin header falsificable |
+| P1-04 | Auth real: OAuth Google + Discord (D-11) | 🟡 implementado y verificado con proveedores simulados, Postgres real y navegador; **falta probar con credenciales reales (P1-11)** | usuario entra con Google/Discord; endpoints protegidos; cookie no falsificable; header `X-User-Id` rechazado salvo `ALLOW_DEV_AUTH=true` |
+| P1-11 | Crear credenciales OAuth (Google, Discord) según `docs/OAUTH_SETUP.md`, aplicar migración 003 y probar login real | ⬜ (dueño) | login real con ambos proveedores; mismo correo → mismo usuario; `/api/auth/me` OK |
 | P1-05 | Interacciones: semántica estado vs evento ❓Q-04, 404/409 si `game_id` no existe, crear usuario si no existe | 🟡 404 y creación de usuario hechos; **semántica pendiente** | guardar→quitar funciona; "jugado" excluye del Top 5 |
 | P1-06 | Verificar `frontend/lib/api.ts` ↔ backend E2E; generar tipos desde `/openapi.json` | 🟡 catálogo, filtros y modal verificados a ojo por el dueño en el navegador; **faltan** chat/Top 5 en UI y generar tipos | catálogo carga en el navegador con filtros |
 | P1-07 | Pulido catálogo: paginación/skeletons, banner de modo degradado (RNF-3) | ⬜ | UI usable con 400+ juegos; banner si `/health` degraded |
@@ -50,4 +51,4 @@ Verificado: `make test` (20 tests) y `make typecheck`. **No verificado:** nada c
 **Hito Fase 3:** a las 00:00 UTC cada usuario recibe 5 juegos diversos, sin jugados/descartados.
 
 ## Fase 4 — Endurecimiento (RNF-3, RNF-4; fuera del SRS original)
-P4-01 logging/métricas · P4-02 rate limiting · P4-03 despliegue (Vercel + contenedor backend) · P4-04 plan de disponibilidad 99.5 % · P4-05 revisión de seguridad (secretos, CORS, inyección vía datos de tools).
+P4-01 logging/métricas · P4-02 rate limiting (incluye `/api/auth/*`) · P4-03 despliegue (Vercel + contenedor backend) · P4-04 plan de disponibilidad 99.5 % · P4-05 revisión de seguridad (secretos, CORS, inyección vía datos de tools).

@@ -1,4 +1,4 @@
-// RF-1.3 detail modal. STATUS: done (basic). TODO(P1-08): screenshot carousel, a11y focus trap, ESC to close.
+// RF-1.3 detail modal. STATUS: verified in browser (basic); library buttons need login (D-11). TODO(P1-08): screenshot carousel, a11y focus trap, ESC to close.
 "use client";
 import { useEffect, useState } from "react";
 import { fetchGame, track } from "@/lib/api";
@@ -7,6 +7,7 @@ import type { GameDetail } from "@/lib/types";
 export default function GameModal({ gameId, onClose }: { gameId: number; onClose: () => void }) {
   const [g, setG] = useState<GameDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   useEffect(() => {
     fetchGame(gameId).then(setG).catch((e) => setErr(String(e)));
     track(gameId, "click"); // feeds RF-3.2
@@ -31,13 +32,13 @@ export default function GameModal({ gameId, onClose }: { gameId: number; onClose
             )}
             <div className="mt-4 flex gap-2 flex-wrap">
               {g.game_url && <a className="bg-indigo-500 px-3 py-1 rounded" href={g.game_url} target="_blank" rel="noreferrer">Jugar / Descargar</a>}
-              {/* TODO(P1-05): library buttons need real auth + `games` synced (P1-02, P1-04) */}
               {(["saved", "played", "disliked"] as const).map((t) => (
-                <button key={t} className="bg-slate-700 px-3 py-1 rounded text-sm" onClick={() => track(g.id, t)}>
+                <button key={t} className="bg-slate-700 px-3 py-1 rounded text-sm" onClick={async () => setNote((await track(g.id, t)) ? "Guardado en tu biblioteca." : "Inicia sesión para usar tu biblioteca.")}>
                   {{ saved: "Guardar", played: "Jugado", disliked: "No me interesa" }[t]}
                 </button>
               ))}
             </div>
+            {note && <p className="mt-2 text-sm text-slate-300" role="status">{note}</p>}
           </>
         )}
       </div>

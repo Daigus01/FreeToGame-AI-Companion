@@ -2,7 +2,7 @@
 // TODO(P2-06): restore history from GET /api/chat/{id}/messages. TODO(P2-08): markdown rendering, stop button.
 "use client";
 import { useRef, useState } from "react";
-import { streamChat } from "@/lib/api";
+import { ApiError, streamChat } from "@/lib/api";
 import type { Game } from "@/lib/types";
 import GameCard from "./GameCard";
 
@@ -28,8 +28,11 @@ export default function ChatWidget({ onOpen }: { onOpen: (id: number) => void })
         else if (ev.type === "games") patch((a) => ({ ...a, games: ev.games }));
         else if (ev.type === "error") patch((a) => ({ ...a, text: ev.message, status: undefined }));
       }
-    } catch {
-      patch((a) => ({ ...a, text: "No se pudo conectar con el asistente.", status: undefined }));
+    } catch (e) {
+      const text = e instanceof ApiError && e.status === 401 ? "Inicia sesión (arriba a la derecha) para usar el asistente."
+        : e instanceof ApiError && e.status === 503 ? "El asistente no está configurado todavía."
+        : "No se pudo conectar con el asistente.";
+      patch((a) => ({ ...a, text, status: undefined }));
     } finally { setBusy(false); }
   }
 

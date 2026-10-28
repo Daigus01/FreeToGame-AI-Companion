@@ -29,6 +29,17 @@ class User(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     created_at: Mapped[datetime] = _now()
+    name: Mapped[str | None] = mapped_column(String(255))  # EXTENSION (003_auth.sql)
+    avatar_url: Mapped[str | None] = mapped_column(Text)  # EXTENSION (003_auth.sql)
+
+
+class UserIdentity(Base):
+    """EXTENSION (D-11): links an OAuth account (provider, provider_user_id) to a user."""
+    __tablename__ = "user_identities"
+    provider: Mapped[str] = mapped_column(String(20), primary_key=True)
+    provider_user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at: Mapped[datetime] = _now()
 
 
 class Game(Base):

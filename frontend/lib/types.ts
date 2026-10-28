@@ -25,6 +25,10 @@ export interface GameDetail extends Game {
   screenshots: { id: number; image: string }[];
 }
 
+export type AuthProvider = "google" | "discord";
+export interface Me { id: string; email: string; name: string | null; avatar_url: string | null }
+export interface AuthProviders { providers: AuthProvider[]; dev_auth: boolean }
+
 export interface DailyRecommendations {
   date: string;
   source: "ml" | "fallback_popular";
