@@ -80,3 +80,6 @@ Login real con Google/Discord (el sandbox no llega a esos hosts y faltan credenc
 - El nombre del usuario se actualiza con el del último proveedor usado (puede alternar entre Google y Discord).
 - El modal de detalle aún no cierra con ESC (ya listado en P1-08).
 - Despliegue: existente BD → aplicar migración 003 a mano (ver OAUTH_SETUP §4).
+
+## 2026-10-28 · Sesión 7 (08:06 hora CDMX) — merge de P1-04
+El dueño confirmó que el login (Google y Discord) funciona con credenciales reales → P1-04 y P1-11 ✅. Rama `p1-04-oauth` mergeada a `main` (fast-forward). Siguiente: Fase 2.

@@ -17,4 +17,4 @@
 | RNF-2 caché 12 h | `core/cache.py`, `services/freetogame.py` | ✅ verificado con Redis real: 2ª petición sin llamada upstream, TTL 43200 s, copia `:stale` 30 d |
 | RNF-3 fallback | clave `:stale` (30 d) + tabla `games` en pipeline | ✅ verificado: con upstream caído sirve copia stale (200) y sin copia responde 503; ⬜ banner UI (P1-07) |
 | RNF-4 secretos | `config.py` (env), frontend solo `NEXT_PUBLIC_API_URL` (y un user id de desarrollo opcional, vacío por defecto); client secrets OAuth y `SESSION_SECRET` solo en backend | ✅ por diseño; revisar P4-05 |
-| (no-SRS) Auth | `auth/`, `api/routes/auth.py`, `api/deps.py`, `AuthButton.tsx`, migración 003 (D-11) | 🟡 verificado con proveedores simulados; real pendiente (P1-11) |
+| (no-SRS) Auth | `auth/`, `api/routes/auth.py`, `api/deps.py`, `AuthButton.tsx`, migración 003 (D-11) | ✅ login real verificado por el dueño (2026-10-28) |
