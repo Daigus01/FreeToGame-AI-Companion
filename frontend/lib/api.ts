@@ -1,7 +1,7 @@
 // Typed client for the backend. STATUS: catalog/filters/modal verified in browser; auth (D-11) pending real-provider check (P1-11).
 // Auth: the browser sends the HttpOnly `ftg_session` cookie (credentials: "include"). NEXT_PUBLIC_DEV_USER_ID is an
 // OPTIONAL local-dev fallback that only works if the backend runs with ALLOW_DEV_AUTH=true.
-import type { AuthProvider, AuthProviders, ChatEvent, DailyRecommendations, Game, GameDetail, InteractionType, Me, Platform, SortBy } from "./types";
+import type { AuthProvider, AuthProviders, ChatEvent, ChatMessageView, ChatSessionInfo, DailyRecommendations, Game, GameDetail, InteractionType, Me, Platform, SortBy } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "";
@@ -70,9 +70,17 @@ export async function track(game_id: number, interaction_type: InteractionType):
   }
 }
 
-/** Streams POST /api/chat (SSE over fetch, since EventSource cannot POST). */
-export async function* streamChat(message: string, sessionId?: string): AsyncGenerator<ChatEvent> {
-  const res = await req("/api/chat", { method: "POST", body: JSON.stringify({ message, session_id: sessionId }) });
+// ---- chat history (RF-2.4) ----
+export async function fetchChatSessions(): Promise<ChatSessionInfo[]> {
+  return json(await req("/api/chat/sessions"));
+}
+export async function fetchChatMessages(sessionId: string): Promise<ChatMessageView[]> {
+  return json(await req(`/api/chat/${sessionId}/messages`));
+}
+
+/** Streams POST /api/chat (SSE over fetch, since EventSource cannot POST). Pass `signal` to stop generation. */
+export async function* streamChat(message: string, sessionId?: string, signal?: AbortSignal): AsyncGenerator<ChatEvent> {
+  const res = await req("/api/chat", { method: "POST", signal, body: JSON.stringify({ message, session_id: sessionId }) });
   if (!res.ok || !res.body) throw new ApiError(res.status, `chat failed: ${res.status}`);
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

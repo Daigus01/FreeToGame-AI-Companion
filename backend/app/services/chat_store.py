@@ -1,4 +1,5 @@
-"""Chat history persistence (RF-2.4). STATUS: implemented in Postgres only, untested (P2-05).
+"""Chat history persistence (RF-2.4). STATUS: Postgres only; verified end-to-end with the mock provider (P2-04).
+No Redis hot cache on purpose: the history query is one indexed read of <=30 rows (D-13); revisit if measured slow.
 
 Conversion between DB rows and OpenAI-format messages (convention D-06):
   user row       sender='user'       content=text
@@ -8,7 +9,7 @@ TODO(P2-05): hot cache in Redis (last N messages per session) to cut latency (RN
 """
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import ChatMessage, ChatSession
@@ -67,3 +68,31 @@ async def save_messages(db: AsyncSession, session_id: UUID, new_messages: list[d
             extra = {"tool_calls": m["tool_calls"]}
         db.add(ChatMessage(session_id=session_id, sender=role, content=m.get("content") or "", tool_calls=extra))
     await db.commit()
+
+
+async def list_sessions(db: AsyncSession, user_id: UUID, limit: int = 20) -> list[dict]:
+    """User's conversations that have at least one message, newest activity first. title = first user message."""
+    first_user = (
+        select(ChatMessage.content)
+        .where(ChatMessage.session_id == ChatSession.id, ChatMessage.sender == "user")
+        .order_by(ChatMessage.created_at)
+        .limit(1)
+        .scalar_subquery()
+    )
+    last_at = select(func.max(ChatMessage.created_at)).where(ChatMessage.session_id == ChatSession.id).scalar_subquery()
+    rows = await db.execute(
+        select(ChatSession.id, first_user.label("title"), last_at.label("updated_at"))
+        .where(ChatSession.user_id == user_id, last_at.is_not(None))
+        .order_by(last_at.desc())
+        .limit(limit)
+    )
+    return [{"id": str(r.id), "title": (r.title or "")[:80], "updated_at": r.updated_at.isoformat()} for r in rows]
+
+
+async def get_session_rows(db: AsyncSession, user_id: UUID, session_id: UUID) -> list[ChatMessage] | None:
+    """All messages of a session in order, or None if the session does not exist or is not the user's."""
+    session = await db.get(ChatSession, session_id)
+    if session is None or session.user_id != user_id:
+        return None
+    result = await db.execute(select(ChatMessage).where(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at))
+    return list(result.scalars().all())

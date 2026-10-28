@@ -7,6 +7,7 @@ Fuente de verdad de requisitos: `docs/SRS.md`. Trazabilidad requisito→código:
 - `make test` — tests backend (deben estar en verde antes y después de cada cambio).
 - `make typecheck` — tsc del frontend.
 - `make todo` — lista todos los `TODO(Px-yy)`; cada ID está definido en `docs/ROADMAP.md`.
+- `make eval` — evalúa el chatbot (`backend/evals`); necesita API key salvo `ARGS="--provider mock --offline"`.
 - `make up` — docker compose (Postgres, Redis, backend, frontend). `make sync` — rellena tabla `games`.
 
 ## Reglas de trabajo

@@ -28,14 +28,16 @@ Verificado: `make test` (20 tests) y `make typecheck`. **No verificado:** nada c
 ## Fase 2 — Chatbot LLM + Tool Calling (RF-2.x, RNF-1)
 | ID | Tarea | Estado | Criterio |
 |---|---|---|---|
-| P2-01 | Verificar `OpenAIProvider` en vivo (deltas de tool_calls, streaming); medir RNF-1 (1er token < 1.5 s, tool < 3 s) ❓Q-05 | 🟡 | métricas registradas en PROGRESS.md |
-| P2-02 | Afinar `prompts.py` + set de ~20 consultas de evaluación (incluye seguimiento "¿y de esos, el más reciente?") | ⬜ | ≥90 % usa tool correcta, 0 juegos inventados |
-| P2-03 | Tarjetas = solo juegos realmente recomendados (hoy: todos los devueltos por tools, máx. 6) | ⬜ | tarjetas coinciden con el texto |
-| P2-04 | Test E2E del endpoint SSE con proveedor falso + BD real | 🟡 | orden de eventos y persistencia verificados |
-| P2-05 | Caché Redis del historial reciente + recorte por tokens (RNF-1) | ⬜ | latencia de carga de historial < 20 ms |
-| P2-06 | `GET /api/chat/{id}/messages` + restaurar conversación en UI (RF-2.4) | ⬜ | recargar la página conserva el chat |
-| P2-07 | `AnthropicProvider` (traducir mensajes formato OpenAI, `to_anthropic_tools`) | ⬜ | misma suite de P2-02 pasa con ambos |
-| P2-08 | UI chat: markdown, botón parar, reintentar, límite de uso por usuario | ⬜ | — |
+| P2-01 | Verificar `OpenAIProvider` en vivo (deltas de tool_calls, streaming); medir RNF-1 (1er token < 1.5 s, tool < 3 s) ❓Q-05 | 🟡 código listo + harness de medición (`python -m evals.chat_eval`); **falta correrlo con una `OPENAI_API_KEY` real (dueño)** | métricas p50/p95 pegadas en PROGRESS.md |
+| P2-02 | Afinar `prompts.py` + set de ~20 consultas de evaluación (incluye seguimiento "¿y de esos, el más reciente?") | 🟡 prompt reescrito (vocabulario de categorías, sort_by, una categoría por consulta, títulos exactos) + 20 casos en `backend/evals/cases.py`; **falta validar con un LLM real y iterar** | ≥90 % pasa (`chat_eval`), 0 juegos inventados (revisar respuestas con `--verbose`) |
+| P2-03 | Tarjetas = solo juegos realmente recomendados | ✅ tarjeta = juego de un resultado de herramienta cuyo título exacto aparece en el texto (D-12); tests + navegador | tarjetas coinciden con el texto |
+| P2-04 | Test E2E del endpoint SSE con proveedor falso + BD real | ✅ `tests/test_chat_integration.py` (Postgres real, se omite si no hay BD) + navegador con `LLM_PROVIDER=mock` | orden de eventos y persistencia verificados |
+| P2-05 | Recorte de historial por tamaño; caché Redis del historial | ✅ recorte (`llm/history.py`, D-13). Caché Redis **descartada por ahora** (lectura indexada de ≤30 filas; reabrir si se mide lento) | historial acotado, nunca empieza en un mensaje huérfano |
+| P2-06 | `GET /api/chat/sessions` y `GET /api/chat/{id}/messages` + restaurar conversación en UI (RF-2.4) | ✅ verificado en navegador: recargar restaura la última conversación y sus tarjetas; aislamiento entre usuarios (404) | recargar la página conserva el chat |
+| P2-07 | `AnthropicProvider` (traducir mensajes formato OpenAI, `to_anthropic_tools`) | 🟡 implementado; traducción y streaming probados con SDK simulado; **falta probar con `ANTHROPIC_API_KEY` real** y correr el mismo `chat_eval` | misma suite de P2-02 pasa con ambos |
+| P2-08 | UI chat: markdown, botón parar, reintentar, límite de uso por usuario | 🟡 hecho: parar, nueva conversación, scroll automático. **Faltan:** markdown, reintentar, límite de uso (P4-02) | — |
+| P2-09 | Consultas con varias categorías usando el endpoint `/filter?tag=a.b.c` de FreeToGame (hoy `get_games_by_filter` admite una sola; el prompt lo compensa filtrando) | ⬜ (verificar el endpoint con la API real) | "MMORPG de fantasía" devuelve la intersección sin que el LLM filtre |
+| P2-10 | Afinar el criterio de RNF-1 con las mediciones reales de P2-01 ❓Q-05 | ⬜ | criterio acordado y reflejado en el SRS/Roadmap |
 **Hito Fase 2:** "Busco un MMORPG de fantasía para PC que no sea muy antiguo" → tarjetas reales en el chat, con seguimiento contextual.
 
 ## Fase 3 — ML y Top 5 diario (RF-3.x)

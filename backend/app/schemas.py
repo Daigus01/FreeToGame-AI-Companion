@@ -59,3 +59,16 @@ class DailyRecommendationsOut(BaseModel):
     date: str
     source: Literal["ml", "fallback_popular"]
     games: list[GameSummary]
+
+
+class ChatMessageOut(BaseModel):
+    """What the UI renders for a past message (cards rebuilt, see services/chat_view.py)."""
+    role: Literal["user", "assistant"]
+    text: str
+    games: list[GameSummary] = Field(default_factory=list)
+
+
+class ChatSessionOut(BaseModel):
+    id: UUID
+    title: str
+    updated_at: str

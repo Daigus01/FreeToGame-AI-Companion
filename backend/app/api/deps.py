@@ -35,7 +35,7 @@ def get_llm_provider(request: Request):
 
     if getattr(request.app.state, "provider", None) is None:
         s = get_settings()
-        key = s.openai_api_key if s.llm_provider == "openai" else s.anthropic_api_key
+        key = {"openai": s.openai_api_key, "anthropic": s.anthropic_api_key, "mock": "n/a"}.get(s.llm_provider, "")
         if not key:
             raise HTTPException(status_code=503, detail="LLM not configured (missing API key)")
         try:

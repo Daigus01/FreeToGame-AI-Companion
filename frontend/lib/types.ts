@@ -25,6 +25,9 @@ export interface GameDetail extends Game {
   screenshots: { id: number; image: string }[];
 }
 
+export interface ChatSessionInfo { id: string; title: string; updated_at: string }
+export interface ChatMessageView { role: "user" | "assistant"; text: string; games: Game[] }
+
 export type AuthProvider = "google" | "discord";
 export interface Me { id: string; email: string; name: string | null; avatar_url: string | null }
 export interface AuthProviders { providers: AuthProvider[]; dev_auth: boolean }

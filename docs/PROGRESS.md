@@ -83,3 +83,24 @@ Login real con Google/Discord (el sandbox no llega a esos hosts y faltan credenc
 
 ## 2026-10-28 · Sesión 7 (08:06 hora CDMX) — merge de P1-04
 El dueño confirmó que el login (Google y Discord) funciona con credenciales reales → P1-04 y P1-11 ✅. Rama `p1-04-oauth` mergeada a `main` (fast-forward). Siguiente: Fase 2.
+
+## 2026-10-28 · Sesión 8 (13:12 CDMX) — Fase 2 (chatbot) sin LLM real — rama `p2-chatbot`
+Contexto: el dueño autorizó el merge de P1-04 y seguir con la siguiente fase. El merge ya estaba hecho en `main` (otra sesión, fast-forward; `p2-chatbot` partía de `main` sin trabajo previo). Sin API key de LLM disponible → se hizo todo lo que no la necesita.
+### Hecho
+- **P2-03 tarjetas** (`llm/cards.py`, D-12): solo juegos de resultados de herramientas cuyo título exacto menciona el texto. Cambió el contrato de `test_orchestrator` (antes: hasta 6 tarjetas con todos los resultados).
+- **P2-02 prompt** reescrito (vocabulario de categorías, `sort_by`, una categoría por consulta, seguimiento sin re-consultar, títulos exactos) + **20 casos** y harness `evals/chat_eval.py` (aciertos de herramienta/argumentos, p50/p95 de latencias vs RNF-1, `--verbose`, `--out`).
+- **P2-05** recorte de historial por tamaño (`llm/history.py`, D-13); caché Redis descartada con justificación.
+- **P2-06** `GET /api/chat/sessions` y `/{id}/messages` (+ `services/chat_view.py`), restauración en UI.
+- **P2-07** `AnthropicProvider` (D-15) + `LLM_PROVIDER=mock` (D-14).
+- **P2-08 (parcial)** botón Parar, Nueva conversación, scroll automático.
+- **P2-04** `tests/test_chat_integration.py` (Postgres real) + prueba en navegador.
+### Verificación
+- `pytest`: **68 passed** (42 previos + 26 nuevos: cards/history, providers, chat_view, eval harness y 2 de integración). Los 2 de integración corren con Postgres real y se omiten sin BD (comprobado).
+- Navegador (Playwright) con `LLM_PROVIDER=mock`: enviar → 3 tarjetas correctas → clic abre el modal → recargar restaura mensajes y tarjetas → Nueva conversación vacía → la nueva conversación es la restaurada tras recargar. Sin errores JS. `tsc` limpio.
+- `python -m evals.chat_eval --provider mock --offline` → 14/20 (esperado: el mock no sabe no usar herramientas, pedir detalles, ordenar alfabéticamente ni "battle-royale"); confirma que el harness discrimina.
+### No verificado (necesita clave real)
+OpenAI/Anthropic en vivo (streaming de `tool_calls`, calidad del prompt, seguimiento "¿y de esos…?"), latencias RNF-1 → **P2-01/P2-02/P2-07**, a cargo del dueño: ver HANDOFF §8.
+### Notas
+- `get_games_by_filter` solo acepta una categoría; "MMORPG de fantasía" depende de que el LLM filtre (nueva P2-09: endpoint `/filter?tag=`, por verificar contra la API real).
+- Títulos con puntuación o muy cortos pueden dar falsos positivos/negativos en las tarjetas; se observará con el LLM real.
+- Siguiente: correr `chat_eval` con una clave (P2-01/02) → iterar prompt → Fase 3 (P3-01 extracción de preferencias, que sí necesita LLM).

@@ -17,7 +17,7 @@ make up                     # Postgres+Redis+backend(:8000)+frontend(:3000)
 make sync                   # (otra terminal) rellena `games`
 make test                   # tests backend sin servicios externos
 ```
-Sin API key el catálogo funciona; `/api/chat` responde 503. El login es OAuth con Google y Discord: configura las credenciales siguiendo `docs/OAUTH_SETUP.md` (sin ellas el catálogo funciona pero no hay sesión).
+Para probar el chat sin API key pon `LLM_PROVIDER=mock` en `.env` (respuestas de demostración). Sin API key el catálogo funciona; `/api/chat` responde 503. El login es OAuth con Google y Discord: configura las credenciales siguiendo `docs/OAUTH_SETUP.md` (sin ellas el catálogo funciona pero no hay sesión).
 
 ## Desarrollo sin acceso a FreeToGame
 `python backend/scripts/fake_freetogame.py 9000` y `FREETOGAME_BASE_URL=http://localhost:9000/api` en `.env`. Ver `docs/HANDOFF.md` §8.

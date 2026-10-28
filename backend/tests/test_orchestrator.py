@@ -33,7 +33,7 @@ def test_tool_roundtrip_streams_tokens_cards_and_done():
     events = collect()
     types = [e["type"] for e in events]
     assert types == ["tool_call", "token", "token", "games", "done"]
-    assert len(events[3]["games"]) == 6  # capped by MAX_CARDS
+    assert [g["id"] for g in events[3]["games"]] == [1]  # only the game named in the text ("G1", not "G10") gets a card (P2-03)
     roles = [m["role"] for m in events[-1]["new_messages"]]
     assert roles == ["user", "assistant", "tool", "assistant"]
 

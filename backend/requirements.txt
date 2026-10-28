@@ -10,3 +10,4 @@ apscheduler>=3.10,<4
 openai>=1.40
 pytest>=8
 itsdangerous>=2.2
+anthropic>=0.34

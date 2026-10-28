@@ -1,9 +1,9 @@
 # HANDOFF — estado del proyecto y guía para retomarlo con otra IA
 
 ## 1. Resumen de estado (2026-10-27)
-Esqueleto funcional de las 3 fases del SRS. Backend: 20 tests en verde (sin servicios externos). Frontend: `tsc` limpio.
+Esqueleto funcional de las 3 fases del SRS. Backend: 68 tests en verde (66 sin servicios externos + 2 de integración con Postgres, que se omiten solos sin BD). Frontend: `tsc` limpio. Fase 1 completa y verificada por el dueño (incl. login OAuth real). Fase 2: todo lo que no necesita un LLM real está hecho y probado con el proveedor `mock`; falta medir/afinar con una clave real.
 Verificado con Postgres 16 y Redis 7 reales (sesión 3): migraciones, `/health`, caché 12 h, copia stale, `catalog_sync`, interacciones y pipeline diario. `docker compose up` y `catalog_sync` con la API real de FreeToGame (419 juegos) fueron ejecutados por el dueño en Windows (sesión 4). El 404 real y catálogo/filtros/modal en navegador también fueron verificados por el dueño. **Sigue sin verificarse:** Top 5 y chat en la UI, y un LLM real. Lo marcado 🟡 en ROADMAP.md está parcialmente verificado; lee su nota.
-Siguiente paso recomendado: Fase 2 (chatbot; P2-01 necesita `OPENAI_API_KEY` en `.env`) → resto de P1-06 (Top 5 y chat en UI) → programar `catalog_sync` (P1-02) → Fase 2 (necesita `OPENAI_API_KEY`). Catálogo, filtros, modal y 404 real ya verificados por el dueño.
+Siguiente paso recomendado: **P2-01/P2-02 con una API key real** (`python -m evals.chat_eval`, ver §8) → iterar el prompt → P2-07 (misma suite con Anthropic) → Fase 3 (P3-01, que también necesita LLM). Pendientes menores de Fase 1: programar `catalog_sync` (P1-02), P1-07/08/09/10.
 
 ## 2. Cómo retomar (prompt sugerido para la IA auxiliar)
 > Lee `CLAUDE.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md` y la última entrada de `docs/PROGRESS.md`. Ejecuta `make test` y `make typecheck` para confirmar el estado base. Toma la primera tarea ⬜/🟡 del ROADMAP de la fase actual, impleméntala con tests, y al terminar actualiza ROADMAP (estado), PROGRESS (entrada nueva), TRACEABILITY si aplica y los `STATUS:`/`TODO(ID)` del código. No sobrescribas archivos existentes sin leerlos. Si hay una decisión de producto abierta (sección 5), pregunta antes de decidir.
@@ -50,6 +50,10 @@ frontend/lib/          api.ts (cliente + streamChat SSE), types.ts, constants.ts
 - **D-08** Scheduler en proceso (APScheduler) para 1 réplica; con varias, mover a worker dedicado o Celery beat. `ENABLE_SCHEDULER=false` lo apaga.
 - **D-09** Las herramientas devuelven al LLM una carga *reducida* (id, título, género…, descripción 140 car., máx. 12 juegos) y a la UI los datos completos para tarjetas, para ahorrar tokens/latencia (RNF-1).
 - **D-10** Un fallo del proveedor LLM produce un evento SSE `error` genérico (sin detalles internos) y no persiste el turno.
+- **D-12** Tarjetas del chat (RF-2.3): un juego recibe tarjeta si vino de una herramienta *en ese turno* y su **título exacto** aparece en el texto del asistente (palabra completa, sin distinguir mayúsculas; el título más largo absorbe al más corto; orden = primera mención; máx. 6). Si no se menciona ninguno y solo se consultó el detalle de un juego, se muestra ese. Los juegos inventados nunca generan tarjeta. Se reconstruyen igual al restaurar conversaciones (`services/chat_view.py`); no se guardan en BD. El prompt exige escribir los títulos tal cual.
+- **D-13** Historial enviado al LLM: ventana por tamaño (24 000 caracteres ≈ 6k tokens, `llm/history.py`) que siempre empieza en un mensaje de usuario; límite previo de 30 mensajes en la consulta. **Sin caché Redis del historial** (no aporta con una lectura indexada de ≤30 filas; reabrir si se mide lento).
+- **D-14** `LLM_PROVIDER=mock` (`llm/mock.py`): proveedor determinista sin clave para desarrollo/tests. Mapea palabras clave a una llamada `get_games_by_filter` y nombra 3 resultados. **No entiende seguimientos.** No usar en producción.
+- **D-15** `AnthropicProvider` traduce el formato OpenAI interno: `assistant.tool_calls`→bloques `tool_use`, mensajes `tool`→bloques `tool_result` dentro de un mensaje *user* (los consecutivos se fusionan), `system` aparte; streaming con `messages.stream` (`text_stream` + `get_final_message`), `max_tokens=1024`.
 - **D-11** (resuelve Q-01) Auth = OAuth 2.0 *authorization code* con **Google y Discord únicamente**, implementado con `httpx` (sin librería OAuth). Sesión = cookie `ftg_session` firmada (`itsdangerous`), `HttpOnly`, `SameSite=Lax`, 30 días; el *state* anti-CSRF va en otra cookie de 10 min. Solo se aceptan correos **verificados**; el mismo correo en dos proveedores = mismo usuario (tabla `user_identities`, migración 003). El header `X-User-Id` solo vale con `ALLOW_DEV_AUTH=true`. Los tokens del proveedor no se guardan. Guía: `docs/OAUTH_SETUP.md`. Pendiente: limitar peticiones (P4-02) y revocar sesiones del lado servidor si hiciera falta.
 
 ## 5. Preguntas abiertas (necesitan al dueño del producto)
@@ -72,6 +76,11 @@ Cada evento: `event: <tipo>\ndata: <json en una línea>\n\n`. Orden: `session` �
 | done | `{}` |
 Espejo TypeScript: `frontend/lib/types.ts` (`ChatEvent`). Si cambias uno, cambia el otro y `ChatWidget.tsx`.
 
+### Historial (RF-2.4)
+- `GET /api/chat/sessions` → `[{id, title, updated_at}]` (solo conversaciones propias con mensajes, más reciente primero; `title` = primer mensaje del usuario).
+- `GET /api/chat/{session_id}/messages` → `[{role: user|assistant, text, games: [GameSummary]}]` (404 si la sesión no es tuya). Espejo TS: `ChatMessageView`/`ChatSessionInfo` en `frontend/lib/types.ts`.
+- La UI restaura la conversación más reciente al cargar; "Nueva conversación" empieza otra.
+
 ## 7. Notas sobre el SRS
 - `platform=all` y `sort-by` (con guion) son los nombres reales de la API; nuestra API pública usa `sort_by`.
 - Los filtros de UI (RF-1.2) son un subconjunto de las categorías reales de FreeToGame; las tools aceptan cualquier categoría.
@@ -79,6 +88,9 @@ Espejo TypeScript: `frontend/lib/types.ts` (`ChatEvent`). Si cambias uno, cambia
 - `docs/SRS.md` es copia exacta del SRS recibido.
 
 ## 8. Entorno y límites conocidos
+- **Probar el chat sin API key:** en `.env` pon `LLM_PROVIDER=mock` y `docker compose up -d --force-recreate backend` (ver D-14). Con una clave real: `LLM_PROVIDER=openai` + `OPENAI_API_KEY` (o `anthropic` + `ANTHROPIC_API_KEY`).
+- **Evaluar el chatbot (P2-01/02):** `docker compose exec backend python -m evals.chat_eval --verbose --out evals/results.json` (20 casos; reporta aciertos de herramienta/argumentos y latencias p50/p95 frente a RNF-1). `--provider mock --offline` es un autotest del harness (esperado ~14/20: el mock no sabe no usar herramientas).
+- **Tests de integración** (`-m integration`): corren con Postgres real y se omiten solos si no hay BD: `docker compose exec backend python -m pytest -q`.
 - Python 3.12 en Docker (en el sandbox de desarrollo corrió 3.13). Dependencias: `backend/requirements.txt`.
 - Tests no necesitan Postgres/Redis: usan `FakeClient`, `httpx.MockTransport` y overrides de FastAPI. `db/session.py` crea el engine al importar pero no conecta.
 - `db/session.py` y `services/catalog_sync.py` requieren Postgres vivo para ejecutarse de verdad.
