@@ -2,9 +2,9 @@
 
 | Req. | Dónde | Estado |
 |---|---|---|
-| RF-1.1 catálogo grid | `routes/games.py`, `frontend/app/page.tsx`, `GameCard` | 🟡 backend con API real (419 juegos); UI sin revisar en navegador (P1-06) |
-| RF-1.2 filtros | `schemas.py` (valores), `routes/games.py`, `Filters.tsx`, `lib/constants.ts` | ✅ 422 en valores inválidos (test) |
-| RF-1.3 detalle | `GET /api/games/{id}`, `GameModal.tsx` | 🟡 (P1-08) |
+| RF-1.1 catálogo grid | `routes/games.py`, `frontend/app/page.tsx`, `GameCard` | ✅ verificado por el dueño con API real (419 juegos) en navegador |
+| RF-1.2 filtros | `schemas.py` (valores), `routes/games.py`, `Filters.tsx`, `lib/constants.ts` | ✅ 422 en valores inválidos (test); UI verificada en navegador |
+| RF-1.3 detalle | `GET /api/games/{id}`, `GameModal.tsx` | ✅ modal verificado en navegador; 404 real confirmado; pulido pendiente (P1-08) |
 | RF-1.4 biblioteca | `routes/interactions.py` (+`GET /api/library`) | 🟡 semántica pendiente (P1-05) |
 | RF-2.1/2.2 LLM + tools | `llm/tools.py`, `llm/orchestrator.py`, `llm/providers.py` | ✅ lógica con proveedor falso; 🟡 sin LLM real (P2-01) |
 | RF-2.3 tarjetas en chat | evento SSE `games`, `ChatWidget.tsx` | 🟡 (P2-03) |

@@ -56,3 +56,8 @@ Revisión de la rama `p1-01-verify-stack` para merge: ver sección "Revisión de
 Diff: 9 archivos, +117/-16; código de producción solo en `interactions.py` (+404 y ensure_user) y `services/freetogame.py` (HTTP 404 = no encontrado). 21 tests y `tsc` en verde, sin secretos ni `.env` versionados, `main` no avanzó (merge sin conflictos).
 Riesgos conocidos y aceptados: (1) el manejo del 404 asume que FreeToGame responde HTTP 404 para ids inexistentes; si respondiera 200 con `{"status":0}` también funciona (rama ya cubierta por el test original); un 404 en `/games` (lista) devolvería lista vacía en vez de error. (2) la auth sigue siendo el stub `X-User-Id` (no desplegar en público, P1-04).
 Confirmación del dueño ya sobre la rama `p1-01-verify-stack` (Docker/Windows): `catalog_sync` → 419 juegos, `pytest` → **21 passed**. Pendiente de confirmar: `GET /api/games/999999` debe dar 404 en la rama (API real).
+
+## 2026-10-27 · Sesión 5 (20:40 hora COL) — merge a main
+Confirmaciones del dueño: `GET /api/games/999999` → **404** con la API real (cierra la duda del manejo del 404); catálogo, filtros y modal de detalle funcionan en el navegador (P1-06 parcial).
+Rama `p1-01-verify-stack` mergeada a `main` (fast-forward, sin conflictos). Estado base de `main`: 21 tests, `tsc` limpio, Docker verificado por el dueño.
+Siguiente: Q-01 (auth) → P1-04; verificar chat/Top 5 en UI (P1-06 resto); programar `catalog_sync` (P1-02); luego Fase 2 (necesita OPENAI_API_KEY).
