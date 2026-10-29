@@ -17,3 +17,5 @@ Fuente de verdad de requisitos: `docs/SRS.md`. Trazabilidad requisito→código:
 4. Decisiones nuevas → `docs/HANDOFF.md` sección Decisiones (D-xx). Preguntas abiertas → sección Q-xx.
 5. Secretos solo en backend `.env` (RNF-4). Nunca `NEXT_PUBLIC_*` para claves.
 6. Contratos que no se rompen sin actualizar ambos lados: eventos SSE del chat (HANDOFF §6), `backend/app/schemas.py` ↔ `frontend/lib/types.ts`, `backend/app/schemas.py CATEGORIES` ↔ `frontend/lib/constants.ts`.
+7. Las sugerencias del chat (evento SSE `games`) se muestran en el **catálogo principal**, no en el chat (D-16): `ChatWidget` → `onSuggest` → estado `suggested` de `app/page.tsx`. No vuelvas a pintar `GameCard`s dentro del chat sin cambiar D-16.
+8. Estado de ramas: revisa `git branch -r` y HANDOFF §1; `main` puede ir por detrás de la rama de trabajo.

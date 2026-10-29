@@ -1,7 +1,9 @@
 // Home: Top 5 widget + catalog (grid + filters) + chat. STATUS: done (skeleton level).
+// Chat suggestions (D-16): the games the assistant recommends replace the catalog grid (banner + "Volver al catálogo"),
+// instead of being rendered as cards inside the chat. Changing a filter returns to the normal catalog.
 // TODO(P1-07): pagination/virtualisation, loading skeletons, error + degraded-mode banner (RNF-3).
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchGames } from "@/lib/api";
 import type { Game } from "@/lib/types";
 import AuthButton from "@/components/AuthButton";
@@ -24,6 +26,14 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [suggested, setSuggested] = useState<Game[] | null>(null);
+  const catalogRef = useRef<HTMLDivElement>(null);
+
+  const showSuggestions = useCallback((list: Game[]) => {
+    setSuggested(list);
+    // On narrow screens the chat sits below the catalog: bring the results into view
+    catalogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   useEffect(() => {
     // The backend redirects here with ?auth_error=<code> when a login fails (see api/routes/auth.py)
@@ -52,13 +62,25 @@ export default function Home() {
           </p>
         )}
         <Top5Widget onOpen={setOpen} />
-        <Filters value={filters} onChange={setFilters} />
+        <Filters value={filters} onChange={(f) => { setSuggested(null); setFilters(f); }} />
         {error && <p className="text-red-400 text-sm">{error}</p>}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {games.slice(0, 60).map((g) => <GameCard key={g.id} game={g} onOpen={setOpen} />)}
+        <div ref={catalogRef} className="scroll-mt-4 space-y-3">
+          {suggested && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-indigo-950 ring-1 ring-indigo-500 px-3 py-2" role="status">
+              <span className="text-sm">
+                ✨ Sugeridos por el asistente ({suggested.length})
+              </span>
+              <button className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" onClick={() => setSuggested(null)}>
+                Volver al catálogo
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {(suggested ?? games.slice(0, 60)).map((g) => <GameCard key={g.id} game={g} onOpen={setOpen} />)}
+          </div>
         </div>
       </div>
-      <ChatWidget onOpen={setOpen} />
+      <ChatWidget onSuggest={showSuggestions} />
       {open !== null && <GameModal gameId={open} onClose={() => setOpen(null)} />}
     </main>
   );

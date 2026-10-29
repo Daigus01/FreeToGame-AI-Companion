@@ -1,4 +1,4 @@
-// STATUS: done (presentational). Used by catalog grid, Top5 widget and chat cards (RF-1.1, RF-2.3, RF-3.4).
+// STATUS: done (presentational). Used by the catalog grid (also for chat suggestions, D-16) and the Top5 widget (RF-1.1, RF-2.3, RF-3.4).
 import type { Game } from "@/lib/types";
 
 export default function GameCard({ game, onOpen, compact = false }: { game: Game; onOpen: (id: number) => void; compact?: boolean }) {

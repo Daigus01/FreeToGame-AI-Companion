@@ -1,8 +1,9 @@
 # HANDOFF — estado del proyecto y guía para retomarlo con otra IA
 
-## 1. Resumen de estado (2026-10-27)
-Esqueleto funcional de las 3 fases del SRS. Backend: 68 tests en verde (66 sin servicios externos + 2 de integración con Postgres, que se omiten solos sin BD). Frontend: `tsc` limpio. Fase 1 completa y verificada por el dueño (incl. login OAuth real). Fase 2: todo lo que no necesita un LLM real está hecho y probado con el proveedor `mock`; falta medir/afinar con una clave real.
-Verificado con Postgres 16 y Redis 7 reales (sesión 3): migraciones, `/health`, caché 12 h, copia stale, `catalog_sync`, interacciones y pipeline diario. `docker compose up` y `catalog_sync` con la API real de FreeToGame (419 juegos) fueron ejecutados por el dueño en Windows (sesión 4). El 404 real y catálogo/filtros/modal en navegador también fueron verificados por el dueño. **Sigue sin verificarse:** Top 5 y chat en la UI, y un LLM real. Lo marcado 🟡 en ROADMAP.md está parcialmente verificado; lee su nota.
+## 1. Resumen de estado (2026-10-29)
+Esqueleto funcional de las 3 fases del SRS. Backend: 68 tests (66 pasan sin servicios externos + 2 de integración con Postgres, que se omiten solos sin BD). Frontend: `tsc` limpio. Fase 1: núcleo verificado por el dueño (incl. login OAuth real); quedan pendientes menores (P1-02, P1-05, P1-07…P1-10).
+**Ramas (Git):** `main` llega hasta P1-04 (sesión 7). El trabajo de Fase 2 (sesión 8) vive en `p2-chatbot` (1 commit sobre `main`, fast-forward, **aún sin mergear**) y la sesión 9 (sugerencias en el catálogo, D-16) en `p2-suggestions-in-catalog`, que parte de `p2-chatbot`. Antes de seguir, decidir/ejecutar el merge de ambas a `main`. Fase 2: todo lo que no necesita un LLM real está hecho y probado con el proveedor `mock`; falta medir/afinar con una clave real.
+Verificado con Postgres 16 y Redis 7 reales (sesión 3): migraciones, `/health`, caché 12 h, copia stale, `catalog_sync`, interacciones y pipeline diario. `docker compose up` y `catalog_sync` con la API real de FreeToGame (419 juegos) fueron ejecutados por el dueño en Windows (sesión 4). El 404 real y catálogo/filtros/modal en navegador también fueron verificados por el dueño. **Sigue sin verificarse:** Top 5 en la UI, un LLM real y el nuevo flujo «sugerencias del chat en el catálogo» (D-16) en navegador (solo `tsc`, sin prueba visual). Lo marcado 🟡 en ROADMAP.md está parcialmente verificado; lee su nota.
 Siguiente paso recomendado: **P2-01/P2-02 con una API key real** (`python -m evals.chat_eval`, ver §8) → iterar el prompt → P2-07 (misma suite con Anthropic) → Fase 3 (P3-01, que también necesita LLM). Pendientes menores de Fase 1: programar `catalog_sync` (P1-02), P1-07/08/09/10.
 
 ## 2. Cómo retomar (prompt sugerido para la IA auxiliar)
@@ -25,17 +26,23 @@ backend/app/
   api/routes/          health, games(+filters), interactions(+library), chat(SSE), recommendations
   llm/tools.py         schemas SRS §5 + execute_tool (nunca lanza; devuelve {"error"})
   llm/orchestrator.py  run_chat(): bucle LLM↔tools (máx 4 rondas), eventos token/tool_call/games/error/done
-  llm/providers.py     OpenAIProvider (streaming), AnthropicProvider (stub)
+  llm/providers.py     OpenAIProvider y AnthropicProvider (streaming; D-15)
+  llm/mock.py          proveedor determinista sin clave (D-14)
+  llm/cards.py         select_cards: qué juegos del turno se recomiendan (D-12) → evento SSE `games`
+  llm/history.py       recorte del historial por tamaño (D-13)
   llm/prompts.py       SYSTEM_PROMPT
+  services/chat_view.py  reconstruye mensajes+juegos al restaurar una conversación (P2-06)
   ml/ranking.py        PURO: build_profile, score, select_diverse, recommend (RF-3.2/3.3)
   ml/pipeline.py       batch diario → daily_recommendations (upsert idempotente)
   ml/scheduler.py      APScheduler cron 00:00 UTC
   db/models.py, db/session.py   SQLAlchemy async
 backend/migrations/    001_init.sql (SRS §6 + índices), 002_preference_profiles.sql (extensión)
 backend/scripts/       fake_freetogame.py (API falsa para desarrollo offline; ver §8)
-backend/tests/         test_tools (aloja FakeClient), test_orchestrator, test_ranking, test_freetogame_client, test_api
+backend/evals/         chat_eval.py + cases.py (20 casos; `make eval`, P2-01/02)
+backend/tests/         test_tools (aloja FakeClient), test_orchestrator, test_ranking, test_freetogame_client, test_api, test_cards, test_chat_view, test_providers, test_eval_harness, test_chat_integration (Postgres)
 frontend/app/          layout.tsx, page.tsx
-frontend/components/   GameCard, Filters, GameModal, Top5Widget, ChatWidget
+frontend/components/   GameCard, Filters, GameModal, Top5Widget, ChatWidget, AuthButton
+                       (page.tsx guarda el estado `suggested`: el chat le envía los juegos con `onSuggest`, D-16)
 frontend/lib/          api.ts (cliente + streamChat SSE), types.ts, constants.ts
 ```
 
@@ -50,10 +57,11 @@ frontend/lib/          api.ts (cliente + streamChat SSE), types.ts, constants.ts
 - **D-08** Scheduler en proceso (APScheduler) para 1 réplica; con varias, mover a worker dedicado o Celery beat. `ENABLE_SCHEDULER=false` lo apaga.
 - **D-09** Las herramientas devuelven al LLM una carga *reducida* (id, título, género…, descripción 140 car., máx. 12 juegos) y a la UI los datos completos para tarjetas, para ahorrar tokens/latencia (RNF-1).
 - **D-10** Un fallo del proveedor LLM produce un evento SSE `error` genérico (sin detalles internos) y no persiste el turno.
-- **D-12** Tarjetas del chat (RF-2.3): un juego recibe tarjeta si vino de una herramienta *en ese turno* y su **título exacto** aparece en el texto del asistente (palabra completa, sin distinguir mayúsculas; el título más largo absorbe al más corto; orden = primera mención; máx. 6). Si no se menciona ninguno y solo se consultó el detalle de un juego, se muestra ese. Los juegos inventados nunca generan tarjeta. Se reconstruyen igual al restaurar conversaciones (`services/chat_view.py`); no se guardan en BD. El prompt exige escribir los títulos tal cual.
+- **D-12** Selección de juegos recomendados por el chat (RF-2.3; antes «tarjetas en el chat», su presentación cambió en D-16): un juego recibe tarjeta si vino de una herramienta *en ese turno* y su **título exacto** aparece en el texto del asistente (palabra completa, sin distinguir mayúsculas; el título más largo absorbe al más corto; orden = primera mención; máx. 6). Si no se menciona ninguno y solo se consultó el detalle de un juego, se muestra ese. Los juegos inventados nunca generan tarjeta. Se reconstruyen igual al restaurar conversaciones (`services/chat_view.py`); no se guardan en BD. El prompt exige escribir los títulos tal cual.
 - **D-13** Historial enviado al LLM: ventana por tamaño (24 000 caracteres ≈ 6k tokens, `llm/history.py`) que siempre empieza en un mensaje de usuario; límite previo de 30 mensajes en la consulta. **Sin caché Redis del historial** (no aporta con una lectura indexada de ≤30 filas; reabrir si se mide lento).
 - **D-14** `LLM_PROVIDER=mock` (`llm/mock.py`): proveedor determinista sin clave para desarrollo/tests. Mapea palabras clave a una llamada `get_games_by_filter` y nombra 3 resultados. **No entiende seguimientos.** No usar en producción.
 - **D-15** `AnthropicProvider` traduce el formato OpenAI interno: `assistant.tool_calls`→bloques `tool_use`, mensajes `tool`→bloques `tool_result` dentro de un mensaje *user* (los consecutivos se fusionan), `system` aparte; streaming con `messages.stream` (`text_stream` + `get_final_message`), `max_tokens=1024`.
+- **D-16** (2026-10-29) **Las sugerencias del chat se muestran en el catálogo principal, no dentro del chat.** El backend no cambia: sigue emitiendo el evento SSE `games` (D-12) y `GET /api/chat/{id}/messages` sigue devolviendo `games` por mensaje. En el frontend, `ChatWidget` ya no pinta `GameCard`s: llama a `onSuggest(games)` y `app/page.tsx` sustituye el grid del catálogo por esos juegos, con un banner «Sugeridos por el asistente (N)» y el botón «Volver al catálogo» (también se vuelve al cambiar un filtro). Cada mensaje del chat con juegos conserva un enlace «Ver N juegos en el catálogo» que los vuelve a mostrar (útil tras restaurar la conversación; al cargar la página **no** se aplican sugerencias antiguas automáticamente). Los filtros estáticos (RF-1.2) no se aplican a las sugerencias. Pendiente de decidir con el dueño: ver Q-06.
 - **D-11** (resuelve Q-01) Auth = OAuth 2.0 *authorization code* con **Google y Discord únicamente**, implementado con `httpx` (sin librería OAuth). Sesión = cookie `ftg_session` firmada (`itsdangerous`), `HttpOnly`, `SameSite=Lax`, 30 días; el *state* anti-CSRF va en otra cookie de 10 min. Solo se aceptan correos **verificados**; el mismo correo en dos proveedores = mismo usuario (tabla `user_identities`, migración 003). El header `X-User-Id` solo vale con `ALLOW_DEV_AUTH=true`. Los tokens del proveedor no se guardan. Guía: `docs/OAUTH_SETUP.md`. Pendiente: limitar peticiones (P4-02) y revocar sesiones del lado servidor si hiciera falta.
 
 ## 5. Preguntas abiertas (necesitan al dueño del producto)
@@ -61,6 +69,7 @@ frontend/lib/          api.ts (cliente + streamChat SSE), types.ts, constants.ts
 - **Q-02 "Subgénero":** la API no lo da. ¿Basta `genre`, o se enriquecen con etiquetas/categorías (`?category=` por etiqueta)? Afecta P3-07.
 - **Q-03 Proveedor/modelo LLM y presupuesto:** el SRS cita GPT-4o-mini / "Claude 3.5 Sonnet" (ya antiguos). Los modelos son configurables por env; falta elegir default y límite de gasto por usuario.
 - **Q-04 Semántica de biblioteca:** ¿"guardado/jugado/no me interesa" son estados excluyentes (último gana, se puede deshacer) o eventos acumulativos? Hoy: solo se añaden filas.
+- **Q-06 Sugerencias en el catálogo (D-16):** ¿las sugerencias *sustituyen* el grid (hoy) o se muestran como fila destacada encima del catálogo completo? ¿Deben combinarse con los filtros (p. ej. plataforma) o ignorarlos? ¿Se aplican las sugerencias del último turno al restaurar la conversación?
 - **Q-05 RNF-1:** "primer token < 1.5 s" choca con el flujo con herramientas (LLM → tool → LLM). Propuesta: contar el evento `tool_call` (estado "Consultando catálogo…") como primer feedback, o medir primer token *de texto* solo en turnos sin tool. Confirmar criterio.
 
 ## 6. Contrato SSE de `POST /api/chat`
@@ -71,10 +80,10 @@ Cada evento: `event: <tipo>\ndata: <json en una línea>\n\n`. Orden: `session` �
 | session | `{"session_id": "<uuid>"}` |
 | token | `{"text": "..."}` |
 | tool_call | `{"name": "get_games_by_filter"}` |
-| games | `{"games": [GameSummary,...]}` (máx. 6) |
+| games | `{"games": [GameSummary,...]}` (máx. 6). La UI los muestra en el **catálogo principal** (D-16), no en el chat |
 | error | `{"message": "..."}` |
 | done | `{}` |
-Espejo TypeScript: `frontend/lib/types.ts` (`ChatEvent`). Si cambias uno, cambia el otro y `ChatWidget.tsx`.
+Espejo TypeScript: `frontend/lib/types.ts` (`ChatEvent`). Si cambias uno, cambia el otro, `ChatWidget.tsx` y el manejo de `onSuggest` en `app/page.tsx`.
 
 ### Historial (RF-2.4)
 - `GET /api/chat/sessions` → `[{id, title, updated_at}]` (solo conversaciones propias con mensajes, más reciente primero; `title` = primer mensaje del usuario).
@@ -94,7 +103,7 @@ Espejo TypeScript: `frontend/lib/types.ts` (`ChatEvent`). Si cambias uno, cambia
 - Python 3.12 en Docker (en el sandbox de desarrollo corrió 3.13). Dependencias: `backend/requirements.txt`.
 - Tests no necesitan Postgres/Redis: usan `FakeClient`, `httpx.MockTransport` y overrides de FastAPI. `db/session.py` crea el engine al importar pero no conecta.
 - `db/session.py` y `services/catalog_sync.py` requieren Postgres vivo para ejecutarse de verdad.
-- El historial pasado a proveedor puede crecer: hoy se limita a 30 mensajes (`HISTORY_LIMIT`); recorte por tokens pendiente (P2-05).
+- El historial pasado a proveedor puede crecer: hoy se limita a 30 mensajes (`HISTORY_LIMIT`) y además se recorta por tamaño (`llm/history.py`, D-13).
 - **API falsa para desarrollo offline:** `python backend/scripts/fake_freetogame.py 9000` y `FREETOGAME_BASE_URL=http://localhost:9000/api`. Endpoints extra: `GET /__hits` (cuenta llamadas), `POST /__down` / `POST /__up` (simula caída). Datos sintéticos (60 juegos); no sustituye P1-03.
 - **Arranque local sin Docker** (así se verificó en la sesión 3): Postgres 16 + Redis 7 locales, aplicar `backend/migrations/*.sql` en orden, `ENABLE_SCHEDULER=false`, `uvicorn app.main:app`. Cuidado: `pkill -f uvicorn` desde un shell cuyo comando contenga ese texto lo mata a sí mismo.
 - El cliente trata HTTP 404 de FreeToGame como "no encontrado" (no como caída, no cachea). Se asumió así porque la API real no se pudo consultar; confirmar en P1-03.

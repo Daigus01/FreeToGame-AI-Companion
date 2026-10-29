@@ -2,7 +2,7 @@
 
 Leyenda: ✅ hecho y probado · 🟡 implementado sin verificar en vivo · ⬜ pendiente · ❓ bloqueado por pregunta (Q-xx en HANDOFF.md)
 Cada ID aparece como `TODO(ID)` en el código (`make todo`). Orden sugerido: P1 → P2 → P3 → P4; dentro de una fase, por ID.
-Última actualización: 2026-10-27, sesión 3 (ver PROGRESS.md).
+Última actualización: 2026-10-29, sesión 9 (ver PROGRESS.md).
 
 ## Fase 0 — Cimientos ✅
 Estructura, SRS en docs, esquema SQL (migrations/001+002), modelos SQLAlchemy, config, cliente FreeToGame con caché 12 h + fallback stale,
@@ -30,7 +30,7 @@ Verificado: `make test` (20 tests) y `make typecheck`. **No verificado:** nada c
 |---|---|---|---|
 | P2-01 | Verificar `OpenAIProvider` en vivo (deltas de tool_calls, streaming); medir RNF-1 (1er token < 1.5 s, tool < 3 s) ❓Q-05 | 🟡 código listo + harness de medición (`python -m evals.chat_eval`); **falta correrlo con una `OPENAI_API_KEY` real (dueño)** | métricas p50/p95 pegadas en PROGRESS.md |
 | P2-02 | Afinar `prompts.py` + set de ~20 consultas de evaluación (incluye seguimiento "¿y de esos, el más reciente?") | 🟡 prompt reescrito (vocabulario de categorías, sort_by, una categoría por consulta, títulos exactos) + 20 casos en `backend/evals/cases.py`; **falta validar con un LLM real y iterar** | ≥90 % pasa (`chat_eval`), 0 juegos inventados (revisar respuestas con `--verbose`) |
-| P2-03 | Tarjetas = solo juegos realmente recomendados | ✅ tarjeta = juego de un resultado de herramienta cuyo título exacto aparece en el texto (D-12); tests + navegador | tarjetas coinciden con el texto |
+| P2-03 | Sugerencias = solo juegos realmente recomendados | ✅ juego de un resultado de herramienta cuyo título exacto aparece en el texto (D-12); tests + navegador (antes se veían como tarjetas en el chat; ahora van al catálogo, P2-11) | las sugerencias coinciden con el texto |
 | P2-04 | Test E2E del endpoint SSE con proveedor falso + BD real | ✅ `tests/test_chat_integration.py` (Postgres real, se omite si no hay BD) + navegador con `LLM_PROVIDER=mock` | orden de eventos y persistencia verificados |
 | P2-05 | Recorte de historial por tamaño; caché Redis del historial | ✅ recorte (`llm/history.py`, D-13). Caché Redis **descartada por ahora** (lectura indexada de ≤30 filas; reabrir si se mide lento) | historial acotado, nunca empieza en un mensaje huérfano |
 | P2-06 | `GET /api/chat/sessions` y `GET /api/chat/{id}/messages` + restaurar conversación en UI (RF-2.4) | ✅ verificado en navegador: recargar restaura la última conversación y sus tarjetas; aislamiento entre usuarios (404) | recargar la página conserva el chat |
@@ -38,7 +38,8 @@ Verificado: `make test` (20 tests) y `make typecheck`. **No verificado:** nada c
 | P2-08 | UI chat: markdown, botón parar, reintentar, límite de uso por usuario | 🟡 hecho: parar, nueva conversación, scroll automático. **Faltan:** markdown, reintentar, límite de uso (P4-02) | — |
 | P2-09 | Consultas con varias categorías usando el endpoint `/filter?tag=a.b.c` de FreeToGame (hoy `get_games_by_filter` admite una sola; el prompt lo compensa filtrando) | ⬜ (verificar el endpoint con la API real) | "MMORPG de fantasía" devuelve la intersección sin que el LLM filtre |
 | P2-10 | Afinar el criterio de RNF-1 con las mediciones reales de P2-01 ❓Q-05 | ⬜ | criterio acordado y reflejado en el SRS/Roadmap |
-**Hito Fase 2:** "Busco un MMORPG de fantasía para PC que no sea muy antiguo" → tarjetas reales en el chat, con seguimiento contextual.
+| P2-11 | Sugerencias del chat en el catálogo principal en vez de tarjetas en el chat (D-16, Q-06) | 🟡 implementado (`page.tsx`, `ChatWidget.tsx`); `tsc` y 66 tests OK; **falta verificarlo en navegador** y cerrar Q-06 | el chat recomienda → el grid principal muestra esos juegos con banner y «Volver al catálogo»; recargar no cambia el catálogo |
+**Hito Fase 2:** "Busco un MMORPG de fantasía para PC que no sea muy antiguo" → el catálogo principal muestra los juegos sugeridos (D-16) y el chat responde con seguimiento contextual.
 
 ## Fase 3 — ML y Top 5 diario (RF-3.x)
 | ID | Tarea | Estado | Criterio |

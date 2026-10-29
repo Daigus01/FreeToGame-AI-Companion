@@ -104,3 +104,21 @@ OpenAI/Anthropic en vivo (streaming de `tool_calls`, calidad del prompt, seguimi
 - `get_games_by_filter` solo acepta una categoría; "MMORPG de fantasía" depende de que el LLM filtre (nueva P2-09: endpoint `/filter?tag=`, por verificar contra la API real).
 - Títulos con puntuación o muy cortos pueden dar falsos positivos/negativos en las tarjetas; se observará con el LLM real.
 - Siguiente: correr `chat_eval` con una clave (P2-01/02) → iterar prompt → Fase 3 (P3-01 extracción de preferencias, que sí necesita LLM).
+
+## 2026-10-29 · Sesión 9 (17:11 COL) — sugerencias en el catálogo + revisión del repo — rama `p2-suggestions-in-catalog` (parte de `p2-chatbot`)
+Petición del dueño: revisar el repositorio, actualizar los docs y hacer que las sugerencias del chat aparezcan en el catálogo principal en lugar de en el chat.
+### Revisión del repo
+- `main` (`bbff72b`) llega hasta P1-04; el trabajo de la sesión 8 está en `p2-chatbot` (`2c9e25e`, 1 commit sobre `main`, fast-forward) **sin mergear**. La sesión 9 parte de `p2-chatbot` porque el cambio depende de él. No se hizo merge ni push a `main`.
+- Docs con datos obsoletos corregidos en HANDOFF: mapa de código (`AnthropicProvider` ya no es stub; faltaban `cards/history/mock/chat_view/evals`), «recorte por tokens pendiente» (hecho en D-13) y «Fase 1 completa» (quedan P1-02/05/07–10).
+- `CLAUDE.md`: reglas 7 (D-16) y 8 (ramas).
+### Hecho (D-16, P2-11)
+- `ChatWidget.tsx`: ya no renderiza `GameCard`; el evento `games` llama a `onSuggest(games)`. Cada mensaje con juegos conserva «Ver N juegos en el catálogo».
+- `app/page.tsx`: estado `suggested`; el grid pasa a mostrarlos con banner «Sugeridos por el asistente (N)» + «Volver al catálogo» (también al cambiar un filtro) y hace scroll al catálogo (útil en pantallas estrechas).
+- Backend y contrato SSE sin cambios (`games` igual que antes).
+- Docs: HANDOFF (D-16, Q-06, §1, §6), ROADMAP (P2-11), TRACEABILITY (RF-2.3), CLAUDE.md.
+### Verificación
+`npm run typecheck` → limpio. `python -m pytest -q` → **66 passed, 2 skipped** (los 2 de integración necesitan Postgres).
+### No verificado
+Comportamiento en navegador (scroll, banner, botón «Volver», enlace «Ver N juegos», cambio de filtro) → P2-11. LLM real sigue pendiente (P2-01/02/07).
+### Siguiente
+Verificar P2-11 en navegador con `LLM_PROVIDER=mock`; responder Q-06; mergear `p2-chatbot` y esta rama a `main`; luego P2-01/02 con una API key real.

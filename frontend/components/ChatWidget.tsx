@@ -1,15 +1,16 @@
 // RF-2.1..2.4 chat UI over SSE. STATUS: verified in browser with the mock LLM (LLM_PROVIDER=mock); real LLM pending (P2-01).
 // Restores the latest conversation on load (P2-06), "Nueva conversación", and a stop button (P2-08, partial).
+// Recommended games are NOT rendered here (D-16): the `games` event is pushed to the main catalog via `onSuggest`;
+// each message that had suggestions keeps a button to show them there again (also after restoring a conversation).
 // TODO(P2-08): markdown rendering, retry button, per-user usage limit.
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, fetchChatMessages, fetchChatSessions, streamChat } from "@/lib/api";
-import type { ChatMessageView } from "@/lib/types";
-import GameCard from "./GameCard";
+import type { ChatMessageView, Game } from "@/lib/types";
 
 type Msg = ChatMessageView & { status?: string };
 
-export default function ChatWidget({ onOpen }: { onOpen: (id: number) => void }) {
+export default function ChatWidget({ onSuggest }: { onSuggest: (games: Game[]) => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -48,7 +49,7 @@ export default function ChatWidget({ onOpen }: { onOpen: (id: number) => void })
         if (ev.type === "session") sid.current = ev.session_id;
         else if (ev.type === "token") patch((a) => ({ ...a, text: a.text + ev.text, status: undefined }));
         else if (ev.type === "tool_call") patch((a) => ({ ...a, status: "Consultando catálogo…" }));
-        else if (ev.type === "games") patch((a) => ({ ...a, games: ev.games }));
+        else if (ev.type === "games") { patch((a) => ({ ...a, games: ev.games })); onSuggest(ev.games); }
         else if (ev.type === "error") patch((a) => ({ ...a, text: ev.message, status: undefined }));
       }
     } catch (e) {
@@ -81,7 +82,11 @@ export default function ChatWidget({ onOpen }: { onOpen: (id: number) => void })
             <div className={`inline-block rounded px-3 py-2 text-sm whitespace-pre-line text-left ${m.role === "user" ? "bg-indigo-600" : "bg-slate-800"}`}>
               {m.text || m.status || "…"}
             </div>
-            {m.games.length > 0 && <div className="grid grid-cols-2 gap-2 mt-2">{m.games.map((g) => <GameCard key={g.id} game={g} onOpen={onOpen} compact />)}</div>}
+            {m.games.length > 0 && (
+              <button type="button" onClick={() => onSuggest(m.games)} className="block mt-1 text-xs text-indigo-300 hover:text-indigo-200 underline">
+                Ver {m.games.length} {m.games.length === 1 ? "juego" : "juegos"} en el catálogo
+              </button>
+            )}
           </div>
         ))}
         <div ref={bottom} />
