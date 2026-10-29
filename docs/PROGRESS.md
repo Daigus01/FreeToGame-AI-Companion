@@ -104,3 +104,14 @@ OpenAI/Anthropic en vivo (streaming de `tool_calls`, calidad del prompt, seguimi
 - `get_games_by_filter` solo acepta una categoría; "MMORPG de fantasía" depende de que el LLM filtre (nueva P2-09: endpoint `/filter?tag=`, por verificar contra la API real).
 - Títulos con puntuación o muy cortos pueden dar falsos positivos/negativos en las tarjetas; se observará con el LLM real.
 - Siguiente: correr `chat_eval` con una clave (P2-01/02) → iterar prompt → Fase 3 (P3-01 extracción de preferencias, que sí necesita LLM).
+
+## 2026-10-28 · Sesión 8b (14:10 CDMX) — recomendaciones en el catálogo (D-16) — rama `p2-chatbot`
+El dueño confirmó que Fase 2 funciona con `mock` y con la API real de Anthropic, y pidió que los juegos recomendados se rendericen **en el catálogo, no en el chat**.
+### Hecho (solo frontend; backend y contrato SSE intactos)
+- `app/page.tsx`: estado `recs`; la cuadrícula muestra las recomendaciones con banner «Recomendados por el asistente · N» y «Ver todo el catálogo»; cambiar un filtro sale del modo; scroll del catálogo a la vista al recomendar.
+- `ChatWidget.tsx`: ya no dibuja tarjetas; enlace «↗ Ver N juegos recomendados en el catálogo» por mensaje (también en conversaciones restauradas); prop `onRecommend`.
+- **Bug corregido (mío, de P2-08):** el autoscroll del chat usaba `scrollIntoView`, que también movía la página y, en móvil (chat bajo el catálogo), anulaba el scroll hacia las recomendaciones. Ahora solo desplaza el contenedor del chat.
+### Verificación
+Navegador (Playwright, `LLM_PROVIDER=mock`, Postgres real), 16 comprobaciones: catálogo normal al inicio; tras preguntar el catálogo muestra exactamente los 3 juegos nombrados en la respuesta; el chat no tiene tarjetas; enlace del chat; clic en recomendado abre modal; «Ver todo el catálogo»; filtro sale del modo; 2.ª consulta reemplaza; recarga → catálogo normal + enlaces restaurados que reaplican las recomendaciones (hidratadas); móvil 390 px: el catálogo queda a 16 px del borde superior; sin errores JS. `tsc` limpio. Backend sin cambios (68 tests).
+### Decisiones de diseño a revisar por el dueño
+(1) Al recargar NO se auto-aplican recomendaciones viejas (se reaplican con el enlace del chat). (2) Una recomendación nueva reemplaza la cuadrícula completa (los filtros no se combinan con ella). (3) Se aparta de SRS RF-2.3: documentado en D-16.
