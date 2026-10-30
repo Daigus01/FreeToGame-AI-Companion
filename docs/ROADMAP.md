@@ -37,7 +37,7 @@ Verificado: `make test` (20 tests) y `make typecheck`. **No verificado:** nada c
 | P2-07 | `AnthropicProvider` (traducir mensajes formato OpenAI, `to_anthropic_tools`) | ✅ probado con API real (dueño: chat y eval OK); traducción y streaming probados con SDK simulado; OpenAI en vivo sigue sin probarse | misma suite de P2-02 pasa con ambos |
 | P2-08 | UI chat: markdown, botón parar, reintentar, límite de uso por usuario | 🟡 hecho: parar, nueva conversación, scroll automático. **Faltan:** markdown, reintentar, límite de uso (P4-02) | — |
 | P2-09 | Consultas con varias categorías usando el endpoint `/filter?tag=a.b.c` de FreeToGame (hoy `get_games_by_filter` admite una sola; el prompt lo compensa filtrando) | ⬜ (verificar el endpoint con la API real) | "MMORPG de fantasía" devuelve la intersección sin que el LLM filtre |
-| P2-10 | Afinar el criterio de RNF-1 con las mediciones reales de P2-01 ❓Q-05 | ⬜ datos ya disponibles (1er token p50 2.96 s vs 1.5 s; 1er evento p50 1.12 s). Propuesta: medir RNF-1 como «primer evento visible» (tool_call o token) | criterio acordado y reflejado en el SRS/Roadmap
+| P2-10 | Afinar el criterio de RNF-1 con las mediciones reales de P2-01 ✅Q-05 | ✅ el dueño aprobó (2026-10-30) medir RNF-1 como «primer evento visible»: p50 1.12 s / p95 2.19 s | criterio reflejado en HANDOFF (Q-05) y TRACEABILITY |
 **Hito Fase 2:** "Busco un MMORPG de fantasía para PC que no sea muy antiguo" → tarjetas reales en el chat, con seguimiento contextual.
 
 ## Fase 3 — ML y Top 5 diario (RF-3.x)

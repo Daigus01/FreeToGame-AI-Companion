@@ -62,7 +62,7 @@ frontend/lib/          api.ts (cliente + streamChat SSE), types.ts, constants.ts
 - **Q-02 "Subgénero":** la API no lo da. ¿Basta `genre`, o se enriquecen con etiquetas/categorías (`?category=` por etiqueta)? Afecta P3-07.
 - **Q-03 Proveedor/modelo LLM y presupuesto:** el SRS cita GPT-4o-mini / "Claude 3.5 Sonnet" (ya antiguos). Los modelos son configurables por env; falta elegir default y límite de gasto por usuario.
 - **Q-04 Semántica de biblioteca:** ¿"guardado/jugado/no me interesa" son estados excluyentes (último gana, se puede deshacer) o eventos acumulativos? Hoy: solo se añaden filas.
-- **Q-05 RNF-1:** "primer token < 1.5 s" choca con el flujo con herramientas (LLM → tool → LLM). Propuesta: contar el evento `tool_call` (estado "Consultando catálogo…") como primer feedback, o medir primer token *de texto* solo en turnos sin tool. Confirmar criterio.
+- ~~**Q-05 RNF-1**~~ → **RESUELTA** (2026-10-30): el criterio es el **primer evento visible** (`tool_call` o `token`); medido p50 1.12 s / p95 2.19 s, cumple < 1.5 s (ver PROGRESS sesión 9).
 
 ## 6. Contrato SSE de `POST /api/chat`
 Petición: `{"message": str(1..2000), "session_id": uuid|null}` (+ cabecera `X-User-Id` en modo dev).

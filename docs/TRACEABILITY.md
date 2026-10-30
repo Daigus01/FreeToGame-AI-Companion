@@ -13,7 +13,7 @@
 | RF-3.2 atributos | interacciones ✅ (`build_profile`); preferencias de chat: lectura sí, escritura no | 🟡 (P3-01) |
 | RF-3.3 exclusión/diversidad | `ml/ranking.py` (`select_diverse`, exclusión) | ✅ tests; "subgénero"=género (D-07, Q-02) |
 | RF-3.4 widget | `routes/recommendations.py`, `Top5Widget.tsx` | 🟡 (P3-04) |
-| RNF-1 latencia | SSE implementado; medición pendiente | 🟡 medido: 1er token p50 2.96 s / p95 5.36 s (no cumple 1.5 s); 1er evento visible p50 1.12 s; herramienta p50 0.42 s (cumple 3 s). Criterio por decidir (P2-10, Q-05) |
+| RNF-1 latencia | SSE implementado; medición pendiente | ✅ criterio aprobado: primer evento visible p50 1.12 s / p95 2.19 s (cumple < 1.5 s); herramienta p50 0.42 s (< 3 s). Primer token de texto p50 2.96 s (informativo) |
 | RNF-2 caché 12 h | `core/cache.py`, `services/freetogame.py` | ✅ verificado con Redis real: 2ª petición sin llamada upstream, TTL 43200 s, copia `:stale` 30 d |
 | RNF-3 fallback | clave `:stale` (30 d) + tabla `games` en pipeline | ✅ verificado: con upstream caído sirve copia stale (200) y sin copia responde 503; ⬜ banner UI (P1-07) |
 | RNF-4 secretos | `config.py` (env), frontend solo `NEXT_PUBLIC_API_URL` (y un user id de desarrollo opcional, vacío por defecto); client secrets OAuth y `SESSION_SECRET` solo en backend | ✅ por diseño; revisar P4-05 |

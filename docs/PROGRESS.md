@@ -128,3 +128,8 @@ El dueño pegó la salida de `python -m evals.chat_eval` con LLM real, confirmó
 - P2-10/Q-05: proponer medir RNF-1 como «primer evento visible» (1.12 s cumple); el dueño debe decidirlo.
 - OpenAI en vivo sigue sin probarse (solo si se va a usar).
 - Siguiente: Fase 3 (P3-01 extracción de preferencias desde el chat).
+
+## 2026-10-30 · Sesión 10 — README ampliado y cierre de Q-05 — rama `p3-docs-readme`
+- **Q-05 resuelta por el dueño:** RNF-1 se mide como «primer evento visible» (cumple: p50 1.12 s). P2-10 ✅.
+- **README.md** reescrito: arquitectura, dónde vive la base de datos (volumen Docker `pgdata`, tablas, Redis solo caché), prueba rápida paso a paso (incluye Windows sin `make`), qué probar en la UI, tests/evals, operaciones útiles y explicación del algoritmo de recomendación.
+- Sin cambios de código.
