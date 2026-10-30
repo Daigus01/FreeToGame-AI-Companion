@@ -115,3 +115,16 @@ El dueño confirmó que Fase 2 funciona con `mock` y con la API real de Anthropi
 Navegador (Playwright, `LLM_PROVIDER=mock`, Postgres real), 16 comprobaciones: catálogo normal al inicio; tras preguntar el catálogo muestra exactamente los 3 juegos nombrados en la respuesta; el chat no tiene tarjetas; enlace del chat; clic en recomendado abre modal; «Ver todo el catálogo»; filtro sale del modo; 2.ª consulta reemplaza; recarga → catálogo normal + enlaces restaurados que reaplican las recomendaciones (hidratadas); móvil 390 px: el catálogo queda a 16 px del borde superior; sin errores JS. `tsc` limpio. Backend sin cambios (68 tests).
 ### Decisiones de diseño a revisar por el dueño
 (1) Al recargar NO se auto-aplican recomendaciones viejas (se reaplican con el enlace del chat). (2) Una recomendación nueva reemplaza la cuadrícula completa (los filtros no se combinan con ella). (3) Se aparta de SRS RF-2.3: documentado en D-16.
+
+## 2026-10-30 · Sesión 9 — validación con LLM real y merge a `main`
+El dueño pegó la salida de `python -m evals.chat_eval` con LLM real, confirmó que las recomendaciones en el catálogo (D-16) funcionan y autorizó el merge de `p2-chatbot` a `main`.
+### Resultados de la evaluación (P2-01 / P2-02 / P2-07)
+- **Aciertos: 20/20 (100 %)**, objetivo ≥ 90 %. Herramienta y argumentos correctos en todos los casos (p. ej. `mmorpg`+`pc`+`release-date`, `pvp`+`pc`+`alphabetical`, `battle-royale`, `sci-fi`); `details-of-first` usa `get_game_details`; seguimiento, saludo y fuera de tema no llaman herramientas; consulta en inglés respondida en inglés.
+- **Latencias vs RNF-1:** primer token p50 **2.96 s** / p95 5.36 s (**no cumple < 1.5 s**); primer evento visible (tool_call o token) p50 **1.12 s** / p95 2.19 s; ejecución de herramienta p50 **0.42 s** / p95 0.62 s (cumple < 3 s). El primer token incluye la ida y vuelta al LLM tras la herramienta.
+### Observaciones
+- Respuestas con títulos del catálogo (sin inventados en lo muestreado). Algunos textos pierden espacios («lafranquicia», «veteranoy», «decarreras») al cortarse el extracto de la salida; **por verificar si es el recorte del reporte o un artefacto de los deltas de streaming** (revisar con `--verbose`/UI antes de cerrar P2-08).
+- `racing-browser` recomendó Transformice (no es de carreras) admitiéndolo: aceptable, pero el catálogo para esa combinación es de solo 2 juegos.
+### Decisiones / pendientes
+- P2-10/Q-05: proponer medir RNF-1 como «primer evento visible» (1.12 s cumple); el dueño debe decidirlo.
+- OpenAI en vivo sigue sin probarse (solo si se va a usar).
+- Siguiente: Fase 3 (P3-01 extracción de preferencias desde el chat).
